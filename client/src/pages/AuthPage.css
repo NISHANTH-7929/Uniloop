@@ -1,0 +1,26 @@
+.auth-container {
+    min-height: calc(100vh - 60px);
+    /* Adjust for navbar height */
+    background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+    /* More vibrant premium gradient */
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-x: hidden;
+}
+
+.auth-wrapper {
+    background: #fff;
+    overflow: hidden;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.h-500px {
+    min-height: 600px;
+    /* Increased height for register form */
+}
