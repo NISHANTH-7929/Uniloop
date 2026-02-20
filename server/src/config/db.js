@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import dns from "dns";
 
 const connectDB = async () => {
     try{
