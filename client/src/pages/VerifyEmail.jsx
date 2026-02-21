@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { verifyEmail } from "../api/authApi";
 import Loader from "../components/Loader";
+import { motion } from "framer-motion";
 
 const VerifyEmail = () => {
     const { token } = useParams();
@@ -21,54 +22,71 @@ const VerifyEmail = () => {
     };
 
     return (
-        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "80vh" }}>
-            <div style={{ width: "500px", padding: "20px", border: "none", boxShadow: "0 10px 20px rgba(0,0,0,0.1)" }}>
-                <div className="text-center">
-                    {status === "idle" && (
-                        <>
-                            <div style={{ fontSize: "60px", color: "#0d6efd" }}>
-                                <i className="bi bi-shield-lock-fill"></i> 🛡️
-                            </div>
-                            <h2 className="mt-3">Verify Your Email</h2>
-                            <p className="text-muted mb-4">Click the button below to activate your account.</p>
-                            <button onClick={handleVerify} className="btn btn-primary btn-lg w-100 rounded-pill">
-                                Verify Now
-                            </button>
-                        </>
-                    )}
-
-                    {status === "verifying" && (
-                        <>
-                            <Loader />
-                            <h3 className="mt-4">Verifying...</h3>
-                            <p className="text-muted">Please wait a moment.</p>
-                        </>
-                    )}
-
-                    {status === "success" && (
-                        <>
-                            <div style={{ fontSize: "60px", color: "#28a745" }}>
-                                <i className="bi bi-check-circle-fill"></i> ✅
-                            </div>
-                            <h2 className="mt-3 text-success">Verified!</h2>
-                            <p className="mb-4">{message}</p>
-                            <Link to="/auth" className="btn btn-primary btn-lg w-100">Proceed to Login</Link>
-                        </>
-                    )}
-
-                    {status === "error" && (
-                        <>
-                            <div style={{ fontSize: "60px", color: "#dc3545" }}>
-                                <i className="bi bi-x-circle-fill"></i> ❌
-                            </div>
-                            <h2 className="mt-3 text-danger">Verification Failed</h2>
-                            <div className="alert alert-danger mt-3">{message}</div>
-                            <p className="text-muted">The link might be invalid or expired. Please register again.</p>
-                            <Link to="/auth" className="btn btn-outline-secondary mt-3">Register Again</Link>
-                        </>
-                    )}
-                </div>
+        <div className="auth-page-root">
+            <div className="auth-bg-shapes">
+                <div className="auth-shape auth-shape-1"></div>
+                <div className="auth-shape auth-shape-2"></div>
             </div>
+
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+                className="glass-panel"
+                style={{ maxWidth: "500px", width: "100%", padding: "40px", textAlign: "center", position: "relative", zIndex: 10 }}
+            >
+                {status === "idle" && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <div style={{ fontSize: "60px", color: "var(--accent-cyan)", marginBottom: "20px" }}>
+                            🛡️
+                        </div>
+                        <h2 className="text-gradient">Verify Your Email</h2>
+                        <p style={{ color: "var(--text-secondary)", marginBottom: "30px" }}>
+                            Click the button below to activate your cosmic account.
+                        </p>
+                        <button onClick={handleVerify} className="btn-neon primary w-100">
+                            Verify Now
+                        </button>
+                    </motion.div>
+                )}
+
+                {status === "verifying" && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <Loader />
+                        <h3 className="mt-4" style={{ color: "var(--text-primary)" }}>Verifying...</h3>
+                        <p style={{ color: "var(--text-secondary)" }}>Please wait a moment.</p>
+                    </motion.div>
+                )}
+
+                {status === "success" && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <div style={{ fontSize: "60px", color: "var(--accent-purple)", marginBottom: "20px", textShadow: "0 0 20px var(--accent-purple)" }}>
+                            ✅
+                        </div>
+                        <h2 className="text-gradient">Verified!</h2>
+                        <p style={{ color: "var(--text-secondary)", marginBottom: "30px" }}>{message}</p>
+                        <Link to="/auth" className="btn-neon primary w-100" style={{ textDecoration: 'none' }}>
+                            Proceed to Login
+                        </Link>
+                    </motion.div>
+                )}
+
+                {status === "error" && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <div style={{ fontSize: "60px", color: "#ff00c8", marginBottom: "20px", textShadow: "0 0 20px #ff00c8" }}>
+                            ❌
+                        </div>
+                        <h2 style={{ color: "#ff00c8" }}>Verification Failed</h2>
+                        <div className="auth-error mt-3">{message}</div>
+                        <p style={{ color: "var(--text-secondary)", marginBottom: "30px" }}>
+                            The link might be invalid or expired. Please register again.
+                        </p>
+                        <Link to="/auth" className="btn-neon w-100" style={{ textDecoration: 'none' }}>
+                            Register Again
+                        </Link>
+                    </motion.div>
+                )}
+            </motion.div>
         </div>
     );
 };
