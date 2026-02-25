@@ -1,9 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { resetPassword } from "../api/authApi";
 import { motion } from "framer-motion";
 
 const ResetPassword = () => {
+    const passwordRef = useRef(null);
+
+    useEffect(() => {
+        if (passwordRef.current) {
+            passwordRef.current.focus();
+        }
+    }, []);
+
     const { token } = useParams();
     const navigate = useNavigate();
     const [password, setPassword] = useState("");
@@ -65,6 +73,7 @@ const ResetPassword = () => {
                         <input
                             id="password"
                             type="password"
+                            ref={passwordRef}
                             placeholder="New Password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}

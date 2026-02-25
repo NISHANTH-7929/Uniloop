@@ -1,9 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { forgotPassword } from "../api/authApi";
 import { motion } from "framer-motion";
 
 const ForgotPassword = () => {
+    const emailRef = useRef(null);
+
+    useEffect(() => {
+        if (emailRef.current) {
+            emailRef.current.focus();
+        }
+    }, []);
+
     const [email, setEmail] = useState("");
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
@@ -53,6 +61,7 @@ const ForgotPassword = () => {
                         <input
                             id="email"
                             type="email"
+                            ref={emailRef}
                             placeholder="rollno@student.annauniv.edu"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
