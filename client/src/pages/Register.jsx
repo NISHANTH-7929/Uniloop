@@ -1,9 +1,17 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
 
 const Register = ({ onSwitch }) => {
+    const emailRef = useRef(null);
+
+    useEffect(() => {
+        if (emailRef.current) {
+            emailRef.current.focus();
+        }
+    }, []);
+
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -63,6 +71,7 @@ const Register = ({ onSwitch }) => {
                     <input
                         id="email"
                         type="email"
+                        ref={emailRef}
                         placeholder="rollno@student.annauniv.edu"
                         name="email"
                         value={email}

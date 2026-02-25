@@ -1,8 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 
 const Login = ({ onSwitch }) => {
+    const emailRef = useRef(null);
+
+    useEffect(() => {
+        if (emailRef.current) {
+            emailRef.current.focus();
+        }
+    }, []);
+
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -42,6 +50,7 @@ const Login = ({ onSwitch }) => {
                     <input
                         id="email"
                         type="email"
+                        ref={emailRef}
                         placeholder="Enter email"
                         name="email"
                         value={email}
