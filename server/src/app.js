@@ -3,6 +3,15 @@ import cors from "cors";
 
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/authRoutes.js";
+import listingRoutes from "./routes/listingRoutes.js";
+import directoryRoutes from "./routes/directoryRoutes.js";
+import tradeRoutes from "./routes/tradeRoutes.js";
+import borrowRoutes from "./routes/borrowRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
+import wishlistRoutes from "./routes/wishlistRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
 
 const app = express();
 
@@ -23,6 +32,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/listings", listingRoutes);
+app.use("/api/directory", directoryRoutes);
+app.use("/api/trades", tradeRoutes);
+app.use("/api/borrows", borrowRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/chat", chatRoutes);
 
 app.get("/", (req, res) => {
     res.status(200).json({ message: "Uniloop Backend running..." });
