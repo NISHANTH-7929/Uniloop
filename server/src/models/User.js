@@ -32,8 +32,29 @@ const userSchema = new mongoose.Schema({
     verificationTokenExpire: Date,
     role: {
         type: String,
-        enum: ["student", "organizer", "admin"],
+        enum: ["student", "organizer", "admin", "volunteer"],
         default: "student",
+    },
+    trustScore: {
+        type: Number,
+        default: 100,
+        min: 0,
+    },
+    averageRating: {
+        type: Number,
+        default: 0,
+    },
+    totalCompletedTrades: {
+        type: Number,
+        default: 0,
+    },
+    punctualityScore: {
+        type: Number,
+        default: 100,
+    },
+    strikeCount: {
+        type: Number,
+        default: 0,
     },
 }, { timestamps: true });
 
