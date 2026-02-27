@@ -11,6 +11,8 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Events from "./pages/Events";
 import Marketplace from "./pages/Marketplace";
+import Chat from "./pages/Chat";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ToastContainer } from "react-toastify";
@@ -37,6 +39,8 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/events" element={<Events />} />
           <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/admin" element={<AdminDashboard />} />
         </Route>
 
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

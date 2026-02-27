@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
-
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/authRoutes.js";
 import listingRoutes from "./routes/listingRoutes.js";
@@ -30,6 +31,18 @@ if (process.env.NODE_ENV === 'production') {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Security Middleware
+app.use(helmet());
+
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 200, // Limit each IP to 200 requests per `window` (here, per 15 minutes)
+    message: "Too many requests from this IP, please try again after 15 minutes",
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use("/api/", apiLimiter);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/listings", listingRoutes);

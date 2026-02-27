@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
                             setUser(null);
                         });
                     } else {
-                        setUser(decoded);
+                        setUser({ ...decoded, _id: decoded.id });
                     }
                 } catch (err) {
                     localStorage.removeItem("accessToken");
@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
                     const res = await api.post("/refresh");
                     localStorage.setItem("accessToken", res.data.accessToken);
                     const decoded = jwtDecode(res.data.accessToken);
-                    setUser(decoded);
+                    setUser({ ...decoded, _id: decoded.id });
                 } catch (err) {
                     // No refresh token either
                 }

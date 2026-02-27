@@ -1,6 +1,10 @@
 import TradeRequest from '../models/TradeRequest.js';
 import Listing from '../models/Listing.js';
 import Conversation from '../models/Conversation.js';
+import BorrowTracking from '../models/BorrowTracking.js';
+import User from '../models/User.js';
+import MeetupLocation from '../models/MeetupLocation.js';
+import sendEmail from '../utils/sendEmail.js';
 
 // @desc    Create a trade request
 // @route   POST /api/trades
@@ -49,6 +53,31 @@ export const createTradeRequest = async (req, res) => {
         });
 
         // Notifications logic can be fired here for the owner
+        try {
+            const owner = await User.findById(listing.seller);
+            let meetupText = "a proposed location";
+            if (proposedMeetup) {
+                const meetup = await MeetupLocation.findById(proposedMeetup);
+                if (meetup) meetupText = `${meetup.name} (${meetup.campus})`;
+            }
+
+            const emailMessage = `
+                <h2>New Trade Request!</h2>
+                <p>You have received a new ${type} request for your listing: <b>${listing.title}</b>.</p>
+                <p><b>Proposed Meetup Location:</b> ${meetupText}</p>
+                ${proposedPrice ? `<p><b>Proposed Price:</b> $${proposedPrice}</p>` : ''}
+                <p><b>Message:</b> "${message || 'No additional message'}"</p>
+                <p>Log in to your UniLoop Dashboard to accept or reject this request!</p>
+            `;
+
+            await sendEmail({
+                to: owner.email,
+                subject: 'New Uniloop Trade Request',
+                text: emailMessage
+            });
+        } catch (err) {
+            console.error("Email sending failed:", err);
+        }
 
         res.status(201).json(tradeRequest);
     } catch (error) {
@@ -141,11 +170,83 @@ export const respondToTradeRequest = async (req, res) => {
 
             // Handle BorrowTracking if type is 'borrow'
             if (tradeRequest.type === 'borrow') {
-                // Usually BorrowTracking is fully initialized when they actually meet, 
-                // but we might want to provision it now with a 'pending' state or wait till item handed over.
-                // For now, deferred to Borrow Lifecycle implementation phase.
+                await BorrowTracking.create({
+                    tradeRequest: tradeRequest._id,
+                    listing: listing._id,
+                    borrower: tradeRequest.requester,
+                    lender: tradeRequest.owner,
+                    status: 'active',
+                    returnDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default 7 days from now
+                });
+            }
+
+            // Send Email to Requester
+            try {
+                const requester = await User.findById(tradeRequest.requester);
+                let meetupText = "the agreed location";
+                if (tradeRequest.proposedMeetup) {
+                    const meetup = await MeetupLocation.findById(tradeRequest.proposedMeetup);
+                    if (meetup) meetupText = `${meetup.name} (${meetup.campus})`;
+                }
+
+                const emailMessage = `
+                    <h2>Trade Request Accepted!</h2>
+                    <p>Your ${tradeRequest.type} request for <b>${listing.title}</b> has been accepted!</p>
+                    <p><b>Meetup Location:</b> ${meetupText}</p>
+                    <p>You can now open your Uniloop Dashboard to chat with the owner and coordinate the exchange.</p>
+                `;
+
+                await sendEmail({
+                    to: requester.email,
+                    subject: 'Trade Request Accepted',
+                    text: emailMessage
+                });
+            } catch (err) {
+                console.error("Email sending failed:", err);
             }
         }
+
+        res.status(200).json(tradeRequest);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Complete a trade request
+// @route   PUT /api/trades/:id/complete
+// @access  Private
+export const completeTradeRequest = async (req, res) => {
+    try {
+        const tradeRequest = await TradeRequest.findById(req.params.id).populate('listing');
+
+        if (!tradeRequest) {
+            return res.status(404).json({ message: 'Trade request not found' });
+        }
+
+        if (tradeRequest.status !== 'accepted') {
+            return res.status(400).json({ message: `Only accepted trades can be completed. This is ${tradeRequest.status}` });
+        }
+
+        // Both owners and requesters can mark a normal trade as complete.
+        if (tradeRequest.owner.toString() !== req.user._id.toString() && tradeRequest.requester.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized to complete this request' });
+        }
+
+        tradeRequest.status = 'completed';
+        await tradeRequest.save();
+
+        if (tradeRequest.listing) {
+            const listing = await Listing.findById(tradeRequest.listing._id);
+            if (listing) {
+                listing.status = 'completed';
+                await listing.save();
+            }
+        }
+
+        // Grant Trust Points to Both Users
+        await User.findByIdAndUpdate(tradeRequest.owner, { $inc: { totalCompletedTrades: 1 } });
+        await User.findByIdAndUpdate(tradeRequest.requester, { $inc: { totalCompletedTrades: 1 } });
 
         res.status(200).json(tradeRequest);
     } catch (error) {
