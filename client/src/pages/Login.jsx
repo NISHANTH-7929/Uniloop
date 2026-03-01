@@ -24,7 +24,7 @@ const Login = ({ onSwitch }) => {
         setIsLoading(false);
         if (res.success) {
             navigate("/dashboard");
-        } else if (res.error && res.error.toLowerCase().includes("verify")) {
+        } else if (res.requiresVerification) {
             navigate("/verification-sent", { state: { email } });
         }
     };

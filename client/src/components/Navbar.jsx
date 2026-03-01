@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { getNotifications } from "../api/events";
 import "./Navbar.css";
 
 const AppNavbar = () => {
@@ -9,6 +10,7 @@ const AppNavbar = () => {
     const location = useLocation();
     const [scrolled, setScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -22,6 +24,24 @@ const AppNavbar = () => {
     useEffect(() => {
         setMobileMenuOpen(false);
     }, [location.pathname]);
+
+    useEffect(() => {
+        let mounted = true;
+        const loadNotifications = async () => {
+            if (!user) return setUnreadCount(0);
+            try {
+                const { data } = await getNotifications();
+                if (!mounted) return;
+                const unread = data.filter(n => !n.isRead).length;
+                setUnreadCount(unread);
+            } catch (err) {
+                console.error('Failed to fetch notifications for navbar', err);
+            }
+        };
+        loadNotifications();
+        // refresh count whenever location changes
+        return () => { mounted = false; };
+    }, [user, location.pathname]);
 
     const handleLogout = async () => {
         await logout();
@@ -55,6 +75,13 @@ const AppNavbar = () => {
                             <>
                                 <Link className={`nav-link ${isActive('/dashboard')}`} to="/dashboard">
                                     <span className="nav-text">Dashboard</span>
+                                    <div className="nav-indicator"></div>
+                                </Link>
+                                <Link className={`nav-link ${isActive('/notifications')}`} to="/notifications" style={{ position: 'relative' }}>
+                                    <span className="nav-text">Notifications</span>
+                                    {unreadCount > 0 && (
+                                        <span style={{ position: 'absolute', top: 2, right: -6, width: 10, height: 10, borderRadius: 6, background: 'var(--accent-pink)' }} />
+                                    )}
                                     <div className="nav-indicator"></div>
                                 </Link>
                                 <Link className={`nav-link ${isActive('/events')}`} to="/events">
