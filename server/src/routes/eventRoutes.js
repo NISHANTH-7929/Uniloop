@@ -5,7 +5,7 @@ import {
     sendVolunteerRequest, sendPartOrganizerRequest, addSubevent, addEventUpdate,
     requestVolunteerWithdrawal, handleWithdrawalResponse,
     getVolunteerDetails, removeVolunteer,
-    getSubeventDetails, updateSubevent, addSubeventUpdate
+    getSubeventDetails, updateSubevent, addSubeventUpdate, deleteSubevent
 } from "../controllers/eventController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -26,6 +26,7 @@ router.post("/:id/volunteers", protect, assignVolunteer); // Legacy backup or im
 router.post("/:id/subevents", protect, addSubevent);
 router.get("/:id/subevents/:subeventId", getSubeventDetails);
 router.put("/:id/subevents/:subeventId", protect, updateSubevent);
+router.delete("/:id/subevents/:subeventId", protect, deleteSubevent);
 router.post("/:id/subevents/:subeventId/updates", protect, addSubeventUpdate);
 
 router.post("/:id/updates", protect, addEventUpdate);

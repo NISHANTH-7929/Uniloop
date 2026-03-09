@@ -57,6 +57,7 @@ export const sendPartOrganizerRequest = (eventId, targetUserId) => API.post(`/ev
 export const addSubevent = (eventId, payload) => API.post(`/events/${eventId}/subevents`, payload);
 export const getSubeventDetails = (eventId, subeventId) => API.get(`/events/${eventId}/subevents/${subeventId}`);
 export const updateSubevent = (eventId, subeventId, payload) => API.put(`/events/${eventId}/subevents/${subeventId}`, payload);
+export const deleteSubevent = (eventId, subeventId) => API.delete(`/events/${eventId}/subevents/${subeventId}`);
 export const addSubeventUpdate = (eventId, subeventId, payload) => API.post(`/events/${eventId}/subevents/${subeventId}/updates`, payload);
 export const addEventUpdate = (eventId, payload) => API.post(`/events/${eventId}/updates`, payload);
 export const requestVolunteerWithdrawal = (eventId) => API.post(`/events/${eventId}/volunteer-withdrawal`);

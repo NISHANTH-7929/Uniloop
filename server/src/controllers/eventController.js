@@ -753,8 +753,14 @@ export const addSubeventUpdate = async (req, res) => {
         if (!subevent) return res.status(404).json({ message: "Subevent not found" });
 
         const { title, text, attachments } = req.body;
+        // Normalize: store base64 in data field for consistent retrieval
+        const normalizedAttachments = (attachments || []).map(a => ({
+            filename: a.filename || 'file',
+            mime: a.mime || 'application/octet-stream',
+            data: a.data || a.url || ''
+        }));
         subevent.updates = subevent.updates || [];
-        subevent.updates.unshift({ title, text, attachments });
+        subevent.updates.unshift({ title, text, attachments: normalizedAttachments });
 
         await event.save();
 
@@ -779,5 +785,33 @@ export const addSubeventUpdate = async (req, res) => {
     } catch (error) {
         console.error("Add Subevent Update Error:", error);
         res.status(500).json({ message: "Server error posting subevent update" });
+    }
+};
+
+// @desc    Delete a Subevent
+// @route   DELETE /api/events/:id/subevents/:subeventId
+// @access  Private (Part Organizer or Main Organizer or Admin)
+export const deleteSubevent = async (req, res) => {
+    try {
+        const event = await Event.findById(req.params.id);
+        if (!event) return res.status(404).json({ message: "Event not found" });
+
+        const isOwner = event.organizer.toString() === req.user._id.toString();
+        const isPartOrg = event.partOrganizers && event.partOrganizers.map(p => p.toString()).includes(req.user._id.toString());
+        if (!isOwner && !isPartOrg && req.user.role !== 'admin') {
+            return res.status(403).json({ message: "Not authorized to delete this subevent" });
+        }
+
+        const idx = event.subevents.findIndex(s => s._id.toString() === req.params.subeventId);
+        if (idx === -1) return res.status(404).json({ message: "Subevent not found" });
+
+        const title = event.subevents[idx].title;
+        event.subevents.splice(idx, 1);
+        await event.save();
+
+        res.json({ message: `Subevent "${title}" deleted successfully` });
+    } catch (error) {
+        console.error("Delete subevent error:", error);
+        res.status(500).json({ message: "Server error deleting subevent" });
     }
 };
