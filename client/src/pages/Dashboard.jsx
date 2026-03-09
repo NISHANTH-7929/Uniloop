@@ -3,9 +3,11 @@ import { useAuth } from "../context/AuthContext";
 import { motion } from "framer-motion";
 import { fetchTrades, fetchBorrows, respondToTrade, confirmReturn, completeTrade } from "../api/tradeApi";
 import { submitReview } from "../api/reviewApi";
+import { getMyTickets, getNotifications } from "../api/events";
 import { toast } from "react-toastify";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { QRCodeSVG } from "qrcode.react";
 
 const Dashboard = () => {
     const { user } = useAuth();
@@ -14,6 +16,8 @@ const Dashboard = () => {
 
     const [trades, setTrades] = useState([]);
     const [borrows, setBorrows] = useState([]);
+    const [tickets, setTickets] = useState([]);
+    const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("pending"); // pending, active_borrows, past
 
@@ -24,12 +28,16 @@ const Dashboard = () => {
     useEffect(() => {
         const loadDashboardData = async () => {
             try {
-                const [tradesRes, borrowsRes] = await Promise.all([
-                    fetchTrades(),
-                    fetchBorrows()
+                const [tradesRes, borrowsRes, ticketsRes, notifsRes] = await Promise.all([
+                    fetchTrades().catch(() => ({ data: [] })),
+                    fetchBorrows().catch(() => ({ data: [] })),
+                    getMyTickets().catch(() => ({ data: [] })),
+                    getNotifications().catch(() => ({ data: [] }))
                 ]);
                 setTrades(tradesRes.data);
                 setBorrows(borrowsRes.data);
+                setTickets(ticketsRes.data);
+                setNotifications(notifsRes.data);
             } catch (error) {
                 console.error("Dashboard data error", error);
                 toast.error("Failed to load dashboard data");
@@ -178,11 +186,21 @@ const Dashboard = () => {
                 </div>
             </motion.div>
 
+            {/* Notifications Shortcut */}
+            <div style={{ marginBottom: "20px", display: 'flex', justifyContent: 'flex-end' }}>
+                <a href="/notifications" style={{ color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+                    View All Notifications
+                    {notifications.filter(n => !n.isRead).length > 0 && (
+                        <span style={{ width: 10, height: 10, borderRadius: 6, background: 'var(--accent-pink)' }} />
+                    )}
+                </a>
+            </div>
+
             <motion.div
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
-                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "24px", marginBottom: "40px" }}
+                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "24px", marginBottom: "40px" }}
             >
                 <motion.div variants={itemVariants} className="glass-panel" style={{ padding: "30px", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: "-20px", right: "-20px", width: "100px", height: "100px", background: "rgba(112, 0, 255, 0.2)", filter: "blur(30px)", borderRadius: "50%" }}></div>
@@ -200,22 +218,58 @@ const Dashboard = () => {
 
                 <motion.div variants={itemVariants} className="glass-panel" style={{ padding: "30px", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: "-20px", right: "-20px", width: "100px", height: "100px", background: "rgba(112, 0, 255, 0.2)", filter: "blur(30px)", borderRadius: "50%" }}></div>
-                    <h3 style={{ color: "var(--text-muted)", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "1px" }}>Punctuality</h3>
-                    <div style={{ fontSize: "2.5rem", fontWeight: "800", color: "#fff", margin: "10px 0" }}>{punctualityScore}%</div>
-                    <p style={{ color: "var(--accent-cyan)", margin: "0", fontSize: "0.85rem" }}>On-time return rate</p>
+                    <h3 style={{ color: "var(--text-muted)", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "1px" }}>Event Tickets</h3>
+                    <div style={{ fontSize: "2.5rem", fontWeight: "800", color: "#fff", margin: "10px 0" }}>{tickets.length}</div>
+                    <p style={{ color: "var(--accent-pink)", margin: "0", fontSize: "0.85rem" }}>My Registrations</p>
                 </motion.div>
 
                 <motion.div variants={itemVariants} className="glass-panel" style={{ padding: "30px", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: "-20px", right: "-20px", width: "100px", height: "100px", background: strikeCount > 0 ? "rgba(255, 0, 0, 0.2)" : "rgba(0, 255, 100, 0.2)", filter: "blur(30px)", borderRadius: "50%" }}></div>
                     <h3 style={{ color: "var(--text-muted)", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "1px" }}>Account Standing</h3>
-                    <div style={{ fontSize: "1.8rem", fontWeight: "800", color: "#fff", margin: "15px 0" }}>
+                    <div style={{ fontSize: "1.5rem", fontWeight: "800", color: "#fff", margin: "15px 0" }}>
                         {strikeCount === 0 ? "Excellent ✅" : `${strikeCount} Strike(s) ⚠️`}
                     </div>
-                    <p style={{ color: "var(--text-secondary)", margin: "0", fontSize: "0.85rem" }}>Moderation status</p>
+                    <p style={{ color: "var(--text-secondary)", margin: "0", fontSize: "0.85rem", textTransform: "capitalize" }}>Role: {user?.role || "Student"}</p>
                 </motion.div>
             </motion.div>
 
-            {/* Trade Dashboard Area */}
+            {/* My Tickets Section (Event Branch Feature) */}
+            <motion.div variants={itemVariants} className="glass-panel" style={{ padding: "30px", marginBottom: "40px" }}>
+                <h2 style={{ marginBottom: "20px", color: "var(--text-primary)" }}>My Event Tickets (QR Codes)</h2>
+                {loading ? (
+                    <p style={{ textAlign: "center", color: "var(--text-muted)", marginTop: "20px" }}>Loading tickets...</p>
+                ) : tickets.length === 0 ? (
+                    <div style={{ border: "1px solid var(--border-glass)", borderRadius: "12px", padding: "40px", textAlign: "center", background: "rgba(0,0,0,0.2)" }}>
+                        <div style={{ fontSize: "40px", marginBottom: "15px", opacity: "0.5" }}>🎫</div>
+                        <h4 style={{ color: "var(--text-secondary)", margin: "0" }}>You have no active event tickets.</h4>
+                    </div>
+                ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px" }}>
+                        {tickets.map(ticket => (
+                            <div key={ticket._id} style={{ border: "1px solid var(--border-glass)", borderRadius: "12px", padding: "20px", background: "rgba(255,255,255,0.05)", textAlign: "center", position: "relative" }}>
+                                <h4 style={{ color: "var(--accent-cyan)", marginBottom: "5px" }}>{ticket.event?.title}</h4>
+                                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "20px" }}>
+                                    Status: <strong style={{ color: ticket.status === 'ACTIVE' ? '#28a745' : (ticket.status === 'USED' ? '#ffc107' : '#dc3545') }}>{ticket.status}</strong>
+                                </p>
+
+                                {ticket.status === 'ACTIVE' && (
+                                    <div style={{ background: "#fff", padding: "10px", display: "inline-block", borderRadius: "10px" }}>
+                                        <QRCodeSVG value={ticket.qr_token || ticket._id} size={150} />
+                                    </div>
+                                )}
+
+                                {ticket.status !== 'ACTIVE' && (
+                                    <div style={{ padding: "40px 10px", fontSize: "1.2rem", color: "var(--text-muted)" }}>
+                                        {ticket.status === 'USED' ? 'Ticket Scanned & Used' : 'Registration Cancelled'}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </motion.div>
+
+            {/* Trade Dashboard Area (Marketplace Branch Feature) */}
             <motion.div variants={itemVariants} className="glass-panel" style={{ padding: "30px" }}>
                 <div style={{ display: "flex", gap: "15px", marginBottom: "30px", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "15px", overflowX: "auto" }}>
                     <button onClick={() => setActiveTab("active")} style={{ background: "none", border: "none", color: activeTab === "active" ? "#fff" : "var(--text-muted)", fontWeight: activeTab === "active" ? "bold" : "normal", fontSize: "1.1rem", cursor: "pointer", position: "relative", whiteSpace: "nowrap" }}>
