@@ -55,6 +55,9 @@ export const getUsersForRecruitment = (eventId) => API.get(`/events/${eventId}/r
 export const sendVolunteerRequest = (eventId, targetUserId) => API.post(`/events/${eventId}/volunteer-requests`, { targetUserId });
 export const sendPartOrganizerRequest = (eventId, targetUserId) => API.post(`/events/${eventId}/part-organizer-requests`, { targetUserId });
 export const addSubevent = (eventId, payload) => API.post(`/events/${eventId}/subevents`, payload);
+export const getSubeventDetails = (eventId, subeventId) => API.get(`/events/${eventId}/subevents/${subeventId}`);
+export const updateSubevent = (eventId, subeventId, payload) => API.put(`/events/${eventId}/subevents/${subeventId}`, payload);
+export const addSubeventUpdate = (eventId, subeventId, payload) => API.post(`/events/${eventId}/subevents/${subeventId}/updates`, payload);
 export const addEventUpdate = (eventId, payload) => API.post(`/events/${eventId}/updates`, payload);
 export const requestVolunteerWithdrawal = (eventId) => API.post(`/events/${eventId}/volunteer-withdrawal`);
 export const handleWithdrawalResponse = (eventId, notificationId, response) => API.post(`/events/${eventId}/volunteer-withdrawal-response/${notificationId}`, { response });
@@ -62,7 +65,7 @@ export const getVolunteerDetails = (eventId, volunteerId) => API.get(`/events/${
 export const removeVolunteerFromEvent = (eventId, volunteerId) => API.delete(`/events/${eventId}/volunteers/${volunteerId}`);
 
 // Ticket APIs
-export const registerEvent = (eventId, persons, alias, subeventId) => API.post(`/tickets/${eventId}`, { persons, alias, subeventId });
+export const registerEvent = (eventId, persons, alias, subeventId, ticketCategory = 'General') => API.post(`/tickets/${eventId}`, { persons, alias, subeventId, ticketCategory });
 export const getMyTickets = (eventId = null) => API.get("/tickets/my-tickets", { params: { eventId } });
 export const deleteTicket = (id) => API.delete(`/tickets/${id}`);
 export const verifyTicketQR = (qr_token) => API.post("/tickets/verify-qr", { qr_token });

@@ -93,6 +93,13 @@ const AppNavbar = () => {
                                     <div className="nav-indicator"></div>
                                 </Link>
 
+                                {user.role === 'admin' && (
+                                    <Link className={`nav-link ${isActive('/admin')}`} to="/admin" style={{color: 'var(--accent-pink)'}}>
+                                        <span className="nav-text">Admin Panel</span>
+                                        <div className="nav-indicator" style={{background: 'var(--accent-pink)'}}></div>
+                                    </Link>
+                                )}
+
                                 <div className="nav-divider"></div>
 
                                 <button className="btn-neon nav-logout-btn" onClick={handleLogout}>

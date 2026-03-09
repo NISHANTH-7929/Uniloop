@@ -1,9 +1,13 @@
 import User from "../models/User.js";
+import Notification from "../models/Notification.js";
 import sendEmail from "../utils/sendEmail.js";
 import { generateAccessToken, generateRefreshToken, generateVerificationToken } from "../utils/generateToken.js";
 import axios from "axios";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import Event from "../models/Event.js";
+import Ticket from "../models/Ticket.js";
+import RoleTransition from "../models/RoleTransition.js";
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -56,19 +60,13 @@ export const register = async (req, res) => {
         }
 
 
-        // 3. Create User (Unverified)
-        const verificationToken = generateVerificationToken();
-        const verificationTokenHash = crypto
-            .createHash("sha256")
-            .update(verificationToken)
-            .digest("hex");
-
-        const user = await User.create({
-            email,
-            password,
-            verificationToken: verificationTokenHash,
-            verificationTokenExpire: Date.now() + 24 * 60 * 60 * 1000,
-        });
+        // 3. Create Verification Token (Stateless)
+        // Instead of saving the user, we encode their info securely in a JWT that expires in 24 hours.
+        const verificationToken = jwt.sign(
+            { email, password },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+        );
 
         // 4. Send Verification Email (Non-blocking for speed)
         const verificationUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/verify/${verificationToken}`;
@@ -80,7 +78,7 @@ export const register = async (req, res) => {
         `;
 
         sendEmail({
-            to: user.email,
+            to: email,
             subject: "Account Verification",
             text: message,
         }).catch(async (err) => {
@@ -92,8 +90,8 @@ export const register = async (req, res) => {
         res.status(200).json({ message: "Registration successful. Please check your email." });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server Error" });
+        console.error("Register error:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 };
 
@@ -104,24 +102,29 @@ export const register = async (req, res) => {
 // @access  Public
 export const verifyEmail = async (req, res) => {
     try {
-        const verificationToken = crypto
-            .createHash("sha256")
-            .update(req.params.token)
-            .digest("hex");
+        const token = req.params.token;
 
-        const user = await User.findOne({
-            verificationToken,
-            verificationTokenExpire: { $gt: Date.now() },
-        });
-
-        if (!user) {
-            return res.status(400).json({ message: "Invalid or expired token" });
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (err) {
+            return res.status(400).json({ message: "Invalid or expired verification link" });
         }
 
-        user.isVerified = true;
-        user.verificationToken = undefined;
-        user.verificationTokenExpire = undefined;
-        await user.save();
+        const { email, password } = decoded;
+
+        // Ensure user hasn't already been verified/created
+        const userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(400).json({ message: "User is already verified and registered" });
+        }
+
+        // Create the user permanently in the DB since they are now verified
+        await User.create({
+            email,
+            password,
+            isVerified: true
+        });
 
         res.status(200).json({ message: "Email verified successfully. You can now login." });
     } catch (error) {
@@ -181,7 +184,7 @@ export const login = async (req, res) => {
                 console.error("Error while resending verification token:", err);
             }
 
-            return res.status(401).json({ message: "Please verify your email first" });
+            return res.status(401).json({ message: "Please verify your email first", requiresVerification: true });
         }
 
         const accessToken = generateAccessToken(user);
@@ -272,22 +275,23 @@ export const forgotPassword = async (req, res) => {
             <p>This link will expire in 10 minutes.</p>
         `;
 
-        try {
-            await sendEmail({
-                to: user.email,
-                subject: "Password Reset Request",
-                text: message,
-            });
-
-            res.status(200).json({ message: "Email sent" });
-        } catch (error) {
+        // Send email asynchronously so the endpoint responds quickly
+        sendEmail({
+            to: user.email,
+            subject: "Password Reset Request",
+            text: message,
+        }).then(() => {
+            // optionally log success
+        }).catch(async (error) => {
+            console.error("Forgot password email send failed:", error);
+            // rollback token if email failed
             user.resetPasswordToken = undefined;
             user.resetPasswordExpire = undefined;
-
             await user.save({ validateBeforeSave: false });
+        });
 
-            return res.status(500).json({ message: "Email could not be sent" });
-        }
+        // Respond immediately to make UX snappy; email is being delivered in background
+        res.status(200).json({ message: "If an account exists with that email, a reset link has been sent." });
 
     } catch (error) {
         console.error(error);
@@ -326,5 +330,147 @@ export const resetPassword = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Server Error" });
+    }
+};
+
+// @desc    Get User Notifications
+// @route   GET /api/auth/notifications
+// @access  Private
+export const getNotifications = async (req, res) => {
+    try {
+        const notifications = await Notification.find({ user: req.user._id })
+            .sort({ createdAt: -1 })
+            .limit(20);
+
+        res.json(notifications);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error fetching notifications" });
+    }
+};
+
+// @desc    Respond to Volunteer Request
+// @route   POST /api/auth/notifications/:id/respond
+// @access  Private
+export const respondToVolunteerRequest = async (req, res) => {
+    try {
+        const { response } = req.body; // 'accept' or 'decline'
+        const notificationId = req.params.id;
+        const userId = req.user._id;
+
+        const notification = await Notification.findOne({ _id: notificationId, user: userId });
+
+        if (!notification) {
+            return res.status(404).json({ message: "Notification not found" });
+        }
+
+        if (notification.action !== 'volunteer_request' && notification.action !== 'part_organizer_request') {
+            return res.status(400).json({ message: "Invalid action type" });
+        }
+
+        if (notification.isRead) {
+            return res.status(400).json({ message: "Request has already been processed" });
+        }
+
+        const event = await Event.findById(notification.relatedEvent);
+        if (!event) {
+            notification.isRead = true;
+            await notification.save();
+            return res.status(404).json({ message: "The associated event no longer exists" });
+        }
+
+        if (response === 'accept') {
+            if (notification.action === 'part_organizer_request') {
+                if (!event.partOrganizers) event.partOrganizers = [];
+                if (!event.partOrganizers.includes(userId)) {
+                    event.partOrganizers.push(userId);
+                    await event.save();
+
+                    const userDoc = await User.findById(userId);
+                    if (userDoc && userDoc.role !== 'organizer' && userDoc.role !== 'admin') {
+                        userDoc.role = 'organizer';
+                        await userDoc.save();
+                    }
+
+                    await RoleTransition.create({
+                        user: userId,
+                        event: event._id,
+                        previousRole: req.user.role,
+                        newRole: 'organizer',
+                        reason: 'Accepted part organizer request',
+                        changedBy: userId
+                    });
+                }
+                notification.title = "Part Organizer Request Accepted";
+                notification.message = `You are now a part organizer for ${event.title}.`;
+                notification.type = "success";
+            } else {
+                // Check if already a volunteer
+                if (!event.volunteers.includes(userId)) {
+                    event.volunteers.push(userId);
+                    await event.save();
+
+                    // Log role transition
+                    await RoleTransition.create({
+                        user: userId,
+                        event: event._id,
+                        previousRole: req.user.role,
+                        newRole: 'volunteer',
+                        reason: 'Accepted volunteer request',
+                        changedBy: userId
+                    });
+
+                    // Cancel existing tickets if any
+                    const tickets = await Ticket.find({ user: userId, event: event._id, status: 'ACTIVE' });
+                    for (let ticket of tickets) {
+                        ticket.status = 'CANCELLED';
+                        await ticket.save();
+
+                        const pCount = ticket.persons ? ticket.persons.length : 1;
+                        event.registeredCount = Math.max(0, event.registeredCount - pCount);
+                    }
+                    if (tickets.length > 0) await event.save();
+                }
+                notification.title = "Volunteer Request Accepted";
+                notification.message = `You are now a volunteer for ${event.title}.`;
+                notification.type = "success";
+            }
+        } else if (response === 'decline') {
+            const roleName = notification.action === 'part_organizer_request' ? 'part organizer' : 'volunteer';
+            notification.title = "Request Declined";
+            notification.message = `You declined the request to be a ${roleName} for ${event.title}.`;
+            notification.type = "info";
+        } else {
+            return res.status(400).json({ message: "Invalid response" });
+        }
+
+        notification.isRead = true;
+        notification.action = null; // Clear action so buttons hide
+        await notification.save();
+
+        res.json({ message: `Request ${response}ed successfully`, notification });
+    } catch (error) {
+        console.error("Respond request error:", error);
+        res.status(500).json({ message: "Server Error responding to request" });
+    }
+};
+
+// @desc    Mark all notifications as read
+// @route   POST /api/auth/notifications/read
+// @access  Private
+export const markNotificationsAsRead = async (req, res) => {
+    try {
+        await Notification.updateMany(
+            { 
+                user: req.user._id, 
+                isRead: false,
+                $or: [{ action: null }, { action: { $exists: false } }, { action: "" }]
+            },
+            { isRead: true }
+        );
+        res.json({ message: "Notifications marked as read" });
+    } catch (error) {
+        console.error("Mark read error:", error);
+        res.status(500).json({ message: "Server Error marking notifications as read" });
     }
 };

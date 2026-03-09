@@ -5,12 +5,6 @@ import { fetchEvents, createEvent, updateEvent, deleteEvent, fetchEventAttendees
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 
-const LOCATION_OPTIONS = [
-    "Tag Audi", "Vivekananda Audi", "Ground", "CEG Square", "CSE Department",
-    "IT Department", "ECE Department", "Mechanical Department", "Civil Department",
-    "Boys Hostel", "Girls Hostel", "Library", "Hall", "Canteen", "Mess"
-];
-
 const getMinDateTime = () => {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -34,7 +28,6 @@ const Organizer = () => {
     const [endDate, setEndDate] = useState("");
     const [imageUrl, setImageUrl] = useState("");
     const [imageFile, setImageFile] = useState(null);
-    const [locationName, setLocationName] = useState(LOCATION_OPTIONS[0]);
     const [additionalMediaFiles, setAdditionalMediaFiles] = useState([]);
     const [promoLink, setPromoLink] = useState("");
 
@@ -87,7 +80,6 @@ const Organizer = () => {
         setEndDate("");
         setImageUrl("");
         setImageFile(null);
-        setLocationName(LOCATION_OPTIONS[0]);
         setPromoLink("");
         setAdditionalMediaFiles([]);
         setShowCreateForm(false);
@@ -110,7 +102,6 @@ const Organizer = () => {
         try {
             const eventPayload = {
                 title, description, date, endDate,
-                location: { name: locationName },
                 promoLink
             };
             if (imageFile) {
@@ -270,7 +261,7 @@ const Organizer = () => {
                     </div>
                     {showCreateForm && (
                         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="glass-panel" style={{ padding: "30px", marginBottom: "40px", border: "1px solid var(--accent-cyan)" }}>
-                            <h2 style={{ marginBottom: "20px", color: "var(--text-primary)" }}>Launch a New Mission</h2>
+                            <h2 style={{ marginBottom: "20px", color: "var(--text-primary)" }}>Launch a New Grand Event</h2>
                             <form onSubmit={handleCreateEvent} style={{ display: "grid", gap: "20px" }}>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "20px" }}>
                                     <div>
@@ -291,12 +282,6 @@ const Organizer = () => {
                                         <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Mission End</label>
                                         <input type="datetime-local" className="form-control bg-dark text-white border-secondary" required min={date || getMinDateTime()} value={endDate} onChange={e => setEndDate(e.target.value)} />
                                     </div>
-                                    <div>
-                                        <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Location</label>
-                                        <select className="form-control bg-dark text-white border-secondary" required value={locationName} onChange={e => setLocationName(e.target.value)}>
-                                            {LOCATION_OPTIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-                                        </select>
-                                    </div>
                                 </div>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
                                     <div>
@@ -309,7 +294,7 @@ const Organizer = () => {
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '15px' }}>
-                                    <button type="submit" className="btn-neon primary">Initialize Event</button>
+                                    <button type="submit" className="btn-neon primary">Initialize Grand Event</button>
                                     <button type="button" className="btn-neon" onClick={resetForm}>Cancel</button>
                                 </div>
                             </form>
@@ -323,8 +308,7 @@ const Organizer = () => {
                                 <div key={ev._id} className="glass-panel" style={{ padding: "24px", border: ev.status === 'finished' ? '1px solid var(--accent-pink)' : '1px solid var(--border-glass)' }}>
                                     <h3 style={{ color: "var(--accent-cyan)" }}>{ev.title}</h3>
                                     <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{new Date(ev.date).toLocaleString()}</p>
-                                    <div style={{ marginTop: '10px', display: 'flex', gap: '15px' }}>
-                                        <div style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>{ev.location?.name || "TBD"}</div>
+                                    <div style={{ marginTop: '10px' }}>
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px', marginTop: '15px', flexWrap: 'wrap' }}>
                                         <button className="btn-neon" style={{ flex: 1, padding: '6px' }} onClick={() => navigate(`/events/${ev._id}`)}>Stats</button>

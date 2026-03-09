@@ -78,7 +78,7 @@ const Notifications = () => {
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {n.action === 'volunteer_request' && !n.isRead && (
+                                    {(n.action === 'volunteer_request' || n.action === 'part_organizer_request') && !n.isRead && (
                                         <>
                                             <button className="btn-neon primary" onClick={() => handleRespond(n._id, 'accept')}>Accept</button>
                                             <button className="btn-neon" onClick={() => handleRespond(n._id, 'decline')}>Decline</button>
