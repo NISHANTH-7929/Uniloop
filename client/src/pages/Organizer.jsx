@@ -87,9 +87,6 @@ const Organizer = () => {
 
     const handleCreateEvent = async (e) => {
         e.preventDefault();
-        if (new Date(date) < new Date()) {
-            return toast.error("Event start date must be in the future");
-        }
         if (!endDate) {
             return toast.error("Event end date is required");
         }
