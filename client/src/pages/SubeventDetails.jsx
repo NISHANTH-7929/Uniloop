@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { getSubeventDetails, updateSubevent, deleteEvent, getVolunteerDetails, removeVolunteerFromEvent, addSubeventUpdate, registerEvent } from '../api/events';
+import { getSubeventDetails, updateSubevent, deleteSubevent, addSubeventUpdate, registerEvent } from '../api/events';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import Loader from '../components/Loader';
@@ -61,7 +61,12 @@ const SubeventDetails = () => {
 
     const handleFileAdd = (e) => {
         const files = Array.from(e.target.files || []);
+        const MAX_SIZE_MB = 5;
         files.forEach(f => {
+            if (f.size > MAX_SIZE_MB * 1024 * 1024) {
+                toast.error(`"${f.name}" exceeds ${MAX_SIZE_MB}MB limit. Please compress or use a shorter clip.`);
+                return;
+            }
             const reader = new FileReader();
             reader.onload = () => {
                 setUpdateForm(prev => ({
@@ -78,10 +83,11 @@ const SubeventDetails = () => {
         try {
             const payload = { ...updateForm };
             if (updateForm.attachments.length > 0) {
+                // Send attachments with data field (base64) directly — backend normalizes
                 payload.attachments = updateForm.attachments.map(f => ({
                     filename: f.filename,
                     mime: f.mime,
-                    url: f.data
+                    data: f.data
                 }));
             }
             await addSubeventUpdate(id, subeventId, payload);
@@ -153,9 +159,9 @@ const SubeventDetails = () => {
     const handleDeleteSubevent = async () => {
         if (!window.confirm(`Are you sure you want to permanently delete "${event.title}"? This cannot be undone.`)) return;
         try {
-            await deleteEvent(grandEvent._id, event._id);
+            await deleteSubevent(id, subeventId);
             toast.success('Subevent deleted successfully');
-            navigate(`/events/${grandEvent._id}`);
+            navigate(`/events/${id}`);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to delete subevent');
         }
