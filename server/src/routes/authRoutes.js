@@ -1,5 +1,6 @@
 import express from "express";
-import { register, verifyEmail, login, refresh, logout, forgotPassword, resetPassword } from "../controllers/authController.js";
+import { register, verifyEmail, login, refresh, logout, forgotPassword, resetPassword, getNotifications, respondToVolunteerRequest, markNotificationsAsRead } from "../controllers/authController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -10,5 +11,8 @@ router.post("/refresh", refresh);
 router.post("/logout", logout);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:resetToken", resetPassword);
+router.get("/notifications", protect, getNotifications);
+router.post("/notifications/read", protect, markNotificationsAsRead);
+router.post("/notifications/:id/respond", protect, respondToVolunteerRequest);
 
 export default router;

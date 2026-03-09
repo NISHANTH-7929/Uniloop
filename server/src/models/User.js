@@ -28,13 +28,15 @@ const userSchema = new mongoose.Schema({
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
-    verificationToken: String,
-    verificationTokenExpire: Date,
     role: {
         type: String,
-        enum: ["student", "organizer", "admin"],
+        enum: ["student", "organizer", "admin", "volunteer"],
         default: "student",
     },
+    organizerValidity: {
+        from: { type: Date },
+        to: { type: Date }
+    }
 }, { timestamps: true });
 
 // Hash password before saving

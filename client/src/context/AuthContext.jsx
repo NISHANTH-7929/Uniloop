@@ -27,19 +27,26 @@ export const AuthProvider = ({ children }) => {
             if (token) {
                 try {
                     const decoded = jwtDecode(token);
+                    // Ensure `_id` is available for components expecting it
+                    if (decoded.id && !decoded._id) decoded._id = decoded.id;
                     // Check expiry?
                     if (decoded.exp * 1000 < Date.now()) {
                         // Token expired, try refresh
                         await api.post("/refresh").then(res => {
                             localStorage.setItem("accessToken", res.data.accessToken);
                             const newDecoded = jwtDecode(res.data.accessToken);
-                            setUser({ ...newDecoded, ...res.data.user });
+                            if (newDecoded.id && !newDecoded._id) newDecoded._id = newDecoded.id;
+                            // server may also return a user object with fields; prefer combining
+                            const combined = { ...newDecoded, ...res.data.user };
+                            if (combined.id && !combined._id) combined._id = combined.id;
+                            setUser(combined);
                         }).catch(() => {
                             localStorage.removeItem("accessToken");
                             setUser(null);
                         });
                     } else {
                         setUser(decoded);
+                        // Set initial viewMode based on role - REMOVED
                     }
                 } catch (err) {
                     localStorage.removeItem("accessToken");
@@ -51,6 +58,7 @@ export const AuthProvider = ({ children }) => {
                     const res = await api.post("/refresh");
                     localStorage.setItem("accessToken", res.data.accessToken);
                     const decoded = jwtDecode(res.data.accessToken);
+                    if (decoded.id && !decoded._id) decoded._id = decoded.id;
                     setUser(decoded);
                 } catch (err) {
                     // No refresh token either
@@ -68,11 +76,17 @@ export const AuthProvider = ({ children }) => {
         try {
             const { data } = await loginUser({ email, password });
             localStorage.setItem("accessToken", data.accessToken);
-            setUser({ email: data.email, _id: data._id }); // Or decode token
+            const decoded = jwtDecode(data.accessToken);
+            const u = { email: decoded.email, _id: decoded.id || decoded._id, id: decoded.id, role: decoded.role };
+            setUser(u);
             toast.success("Login successful!");
             return { success: true };
         } catch (err) {
             const msg = err.response?.data?.message || "Login failed";
+            // If server indicates user needs verification, return flag for UI to redirect
+            if (err.response?.data?.requiresVerification) {
+                return { success: false, requiresVerification: true, error: msg };
+            }
             toast.error(msg);
             return { success: false, error: msg };
         }

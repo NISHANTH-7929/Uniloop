@@ -3,12 +3,15 @@ import cors from "cors";
 
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/authRoutes.js";
+import eventRoutes from "./routes/eventRoutes.js";
+import ticketRoutes from "./routes/ticketRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 const app = express();
 
 if (process.env.NODE_ENV === 'production') {
     app.use(cors({
-        origin: ["http://localhost:5173", "http://localhost:5174", process.env.CLIENT_URL],
+        origin: ["http://localhost:5173", "https://novella-mothier-clyde.ngrok-free.dev", "http://localhost:5174", process.env.CLIENT_URL],
         credentials: true,
     }));
 } else {
@@ -23,6 +26,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/events", eventRoutes);
+app.use("/api/tickets", ticketRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/", (req, res) => {
     res.status(200).json({ message: "Uniloop Backend running..." });
