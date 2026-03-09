@@ -94,9 +94,9 @@ const AppNavbar = () => {
                                 </Link>
 
                                 {user.role === 'admin' && (
-                                    <Link className={`nav-link ${isActive('/admin')}`} to="/admin" style={{color: 'var(--accent-pink)'}}>
+                                    <Link className={`nav-link ${isActive('/admin')}`} to="/admin" style={{ color: 'var(--accent-pink)' }}>
                                         <span className="nav-text">Admin Panel</span>
-                                        <div className="nav-indicator" style={{background: 'var(--accent-pink)'}}></div>
+                                        <div className="nav-indicator" style={{ background: 'var(--accent-pink)' }}></div>
                                     </Link>
                                 )}
 
@@ -133,6 +133,9 @@ const AppNavbar = () => {
                             <Link className="mobile-link" to="/dashboard">Dashboard</Link>
                             <Link className="mobile-link" to="/events">Events</Link>
                             <Link className="mobile-link" to="/marketplace">Marketplace</Link>
+                            {user.role === 'admin' && (
+                                <Link className="mobile-link" to="/admin" style={{ color: "var(--accent-pink)" }}>Admin Area</Link>
+                            )}
                             <button className="btn-neon mt-4 w-100" onClick={handleLogout}>
                                 Logout
                             </button>

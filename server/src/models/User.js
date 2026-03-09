@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
         minlength: 8,
         select: false,
         match: [
-            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()[\]{}\-_=+|;:'",.<>\/~`])[A-Za-z\d@$!%*?&^#()[\]{}\-_=+|;:'",.<>\/~`]{8,}$/,
+            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()\[\]{}\-_=+|;:'",.<>\/~`])[A-Za-z\d@$!%*?&^#()\[\]{}\-_=+|;:'",.<>\/~`]{8,}$/,
             "Password must contain at least 8 characters, including uppercase, lowercase, number and special character"
         ]
     },
@@ -36,7 +36,28 @@ const userSchema = new mongoose.Schema({
     organizerValidity: {
         from: { type: Date },
         to: { type: Date }
-    }
+    },
+    trustScore: {
+        type: Number,
+        default: 100,
+        min: 0,
+    },
+    averageRating: {
+        type: Number,
+        default: 0,
+    },
+    totalCompletedTrades: {
+        type: Number,
+        default: 0,
+    },
+    punctualityScore: {
+        type: Number,
+        default: 100,
+    },
+    strikeCount: {
+        type: Number,
+        default: 0,
+    },
 }, { timestamps: true });
 
 // Hash password before saving

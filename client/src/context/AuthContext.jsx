@@ -2,7 +2,6 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 import api, { loginUser, logoutUser, registerUser } from "../api/authApi";
 import { jwtDecode } from "jwt-decode";
 import { toast } from "react-toastify";
-// import { useNavigate } from "react-router-dom"; // AuthContext shouldn't control navigation directly usually, but can.
 
 const AuthContext = createContext();
 
@@ -10,9 +9,7 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [initialLoading, setInitialLoading] = useState(true); // Renamed for clarity
-    // We can keep a generic 'loading' for actions if we want, or let components handle it.
-    // Let's rely on components for action loading to avoid global state conflicts.
+    const [initialLoading, setInitialLoading] = useState(true);
 
     // Check for existing token on load
     useEffect(() => {
@@ -45,8 +42,7 @@ export const AuthProvider = ({ children }) => {
                             setUser(null);
                         });
                     } else {
-                        setUser(decoded);
-                        // Set initial viewMode based on role - REMOVED
+                        setUser({ ...decoded, _id: decoded.id });
                     }
                 } catch (err) {
                     localStorage.removeItem("accessToken");
@@ -58,8 +54,7 @@ export const AuthProvider = ({ children }) => {
                     const res = await api.post("/refresh");
                     localStorage.setItem("accessToken", res.data.accessToken);
                     const decoded = jwtDecode(res.data.accessToken);
-                    if (decoded.id && !decoded._id) decoded._id = decoded.id;
-                    setUser(decoded);
+                    setUser({ ...decoded, _id: decoded.id });
                 } catch (err) {
                     // No refresh token either
                 }
@@ -72,7 +67,6 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (email, password) => {
-        // No global loading set here, return promise for component to handle
         try {
             const { data } = await loginUser({ email, password });
             localStorage.setItem("accessToken", data.accessToken);
@@ -83,7 +77,6 @@ export const AuthProvider = ({ children }) => {
             return { success: true };
         } catch (err) {
             const msg = err.response?.data?.message || "Login failed";
-            // If server indicates user needs verification, return flag for UI to redirect
             if (err.response?.data?.requiresVerification) {
                 return { success: false, requiresVerification: true, error: msg };
             }
