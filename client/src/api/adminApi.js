@@ -1,8 +1,8 @@
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_URI || "http://localhost:5000";
+const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_URI || "";
 const api = axios.create({
-    baseURL: `${API_BASE}/api/admin`,
+    baseURL: API_BASE.startsWith('http') ? `${API_BASE}/api/admin` : '/api/admin',
     withCredentials: true,
 });
 

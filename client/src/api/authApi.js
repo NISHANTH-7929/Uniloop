@@ -1,9 +1,9 @@
 import axios from "axios";
 
-// Create Axios instance
-const API_BASE = import.meta.env.VITE_API_URI || "http://localhost:5000";
+// Create Axios instance – use relative path so the Vite dev proxy forwards to the backend
+const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_URI || "";
 const api = axios.create({
-    baseURL: `${API_BASE}/api/auth`,
+    baseURL: API_BASE.startsWith('http') ? `${API_BASE}/api/auth` : '/api/auth',
     withCredentials: true, // Important for cookies (refresh token)
 });
 

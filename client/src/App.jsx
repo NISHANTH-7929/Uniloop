@@ -2,8 +2,6 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppNavbar from "./components/Navbar";
 import AuthPage from "./pages/AuthPage"; // New combined page
-// import Login from "./pages/Login"; // Removing direct access to separated pages (optional)
-// import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
 import VerificationSent from "./pages/VerificationSent"; // New page
 import ForgotPassword from "./pages/ForgotPassword";
@@ -18,6 +16,7 @@ import EventDetails from "./pages/EventDetails";
 import SubeventDetails from "./pages/SubeventDetails";
 import ViewTickets from "./pages/ViewTickets";
 import Notifications from "./pages/Notifications";
+import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -52,6 +51,7 @@ function App() {
           <Route path="/scanner/:eventId" element={<Scanner />} />
           <Route path="/volunteer/:eventId/:volunteerId" element={<VolunteerDetails />} />
           <Route path="/organizer" element={<Organizer />} />
+          <Route path="/chat" element={<Chat />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Route>
 
