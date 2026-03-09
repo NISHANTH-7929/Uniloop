@@ -59,6 +59,30 @@ const Marketplace = () => {
         return matchesCategory && matchesSearch && matchesType;
     });
 
+    // Sub-categorize for UI sections
+    const isDefaultView = searchQuery === "" && listingTypeFilter === "all" && activeCategory === "All";
+
+    let trendingListings = [];
+    let recentlyAddedListings = [];
+    let generalListings = filteredListings;
+
+    if (isDefaultView && filteredListings.length > 0) {
+        trendingListings = [...filteredListings]
+            .sort((a, b) => (b.seller?.trustScore || 0) - (a.seller?.trustScore || 0))
+            .slice(0, 4);
+
+        const trendingIds = new Set(trendingListings.map(item => item._id));
+
+        recentlyAddedListings = [...filteredListings]
+            .filter(item => !trendingIds.has(item._id))
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 4);
+
+        const recentIds = new Set(recentlyAddedListings.map(item => item._id));
+
+        generalListings = filteredListings.filter(item => !trendingIds.has(item._id) && !recentIds.has(item._id));
+    }
+
     const handleTradeSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -116,6 +140,54 @@ const Marketplace = () => {
         }
     };
 
+    // Extracted render function for listing cards to preserve component identity & animations
+    const renderListingCard = (item, onClick) => (
+        <motion.div
+            key={item._id}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring" }}
+            className="glass-panel"
+            style={{ padding: "24px", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden", cursor: "pointer", transition: "transform 0.2s" }}
+            whileHover={{ y: -5 }}
+            onClick={onClick}
+        >
+            <div style={{ position: "absolute", top: "-50px", left: "-50px", width: "150px", height: "150px", background: getListingColor(item.listingType), filter: "blur(40px)", borderRadius: "50%", zIndex: 0 }}></div>
+
+            <div style={{ zIndex: 1, flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                    <span style={{ background: "rgba(255,255,255,0.08)", padding: "4px 10px", borderRadius: "4px", fontSize: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase" }}>
+                        {item.category?.name || "General"}
+                    </span>
+                    <span style={{ color: getListingBadgeColor(item.listingType), fontWeight: "bold", fontSize: "1.1rem" }}>
+                        {item.listingType === 'borrow' ? 'Free (Borrow)' : `₹${item.price}`}
+                    </span>
+                </div>
+
+                <h3 style={{ margin: "0 0 8px", fontSize: "1.2rem", color: "#fff", lineHeight: "1.3" }}>{item.title}</h3>
+
+                <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "15px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    {item.description}
+                </p>
+
+                <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "8px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "15px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", fontSize: "0.8rem" }}>
+                        <Tag size={14} color={getListingBadgeColor(item.listingType)} />
+                        <span style={{ textTransform: "capitalize" }}>{item.listingType}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", fontSize: "0.8rem" }}>
+                        <MapPin size={14} />
+                        {item.meetupLocations?.length > 0 ? item.meetupLocations[0].campus : "Campus General"}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", fontSize: "0.8rem" }}>
+                        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: item.seller?.trustScore > 80 ? "#00ff88" : item.seller?.trustScore > 50 ? "#ffd700" : "#ff4444" }}></div>
+                        Seller Trust: {item.seller?.trustScore || 100}%
+                    </div>
+                </div>
+            </div>
+        </motion.div>
+    );
+
     return (
         <div style={{ padding: "100px 20px 40px", maxWidth: "1200px", margin: "0 auto" }}>
             <motion.div
@@ -157,6 +229,19 @@ const Marketplace = () => {
                             <option value="rent">For Rent</option>
                             <option value="borrow">Borrow-Ready</option>
                         </select>
+
+                        {/* Explicit Borrow-Ready Filter Button for quick access */}
+                        <button
+                            onClick={() => setListingTypeFilter(listingTypeFilter === 'borrow' ? 'all' : 'borrow')}
+                            className={`btn-neon ${listingTypeFilter === 'borrow' ? 'primary' : ''}`}
+                            style={{
+                                padding: "10px 20px", borderRadius: "8px", display: "flex", alignItems: "center", gap: "8px",
+                                background: listingTypeFilter === 'borrow' ? 'var(--accent-purple)' : 'rgba(112,0,255,0.1)',
+                                borderColor: 'var(--accent-purple)', color: listingTypeFilter === 'borrow' ? '#fff' : 'var(--accent-purple)'
+                            }}
+                        >
+                            <Tag size={16} /> Borrow-Ready
+                        </button>
                     </div>
                 </div>
 
@@ -200,71 +285,66 @@ const Marketplace = () => {
                     No listings found matching your criteria.
                 </div>
             ) : (
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                        gap: "24px"
-                    }}
-                >
-                    {filteredListings.map((item) => (
-                        <motion.div
-                            key={item._id}
-                            variants={{ hidden: { scale: 0.9, opacity: 0 }, visible: { scale: 1, opacity: 1, transition: { type: "spring" } } }}
-                            className="glass-panel"
-                            style={{
-                                padding: "24px",
-                                display: "flex",
-                                flexDirection: "column",
-                                position: "relative",
-                                overflow: "hidden",
-                                cursor: "pointer",
-                                transition: "transform 0.2s"
-                            }}
-                            whileHover={{ y: -5 }}
-                            onClick={() => setSelectedListing(item)}
-                        >
-                            <div style={{ position: "absolute", top: "-50px", left: "-50px", width: "150px", height: "150px", background: getListingColor(item.listingType), filter: "blur(40px)", borderRadius: "50%", zIndex: 0 }}></div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
+                    {/* Trending Section */}
+                    {trendingListings.length > 0 && isDefaultView && (
+                        <div>
+                            <h2 style={{ color: "#fff", marginBottom: "20px", fontSize: "1.5rem", display: "flex", alignItems: "center", gap: "10px" }}>🔥 Trending on Campus</h2>
+                            <motion.div
+                                variants={containerVariants}
+                                initial="hidden"
+                                animate="visible"
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                                    gap: "24px"
+                                }}
+                            >
+                                {trendingListings.map((item) => renderListingCard(item, () => setSelectedListing(item)))}
+                            </motion.div>
+                        </div>
+                    )}
 
-                            <div style={{ zIndex: 1, flex: 1, display: "flex", flexDirection: "column" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                                    <span style={{ background: "rgba(255,255,255,0.08)", padding: "4px 10px", borderRadius: "4px", fontSize: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase" }}>
-                                        {item.category?.name || "General"}
-                                    </span>
-                                    <span style={{ color: getListingBadgeColor(item.listingType), fontWeight: "bold", fontSize: "1.1rem" }}>
-                                        {item.listingType === 'borrow' ? 'Free (Borrow)' : `₹${item.price}`}
-                                    </span>
-                                </div>
+                    {/* Recently Added Section */}
+                    {recentlyAddedListings.length > 0 && isDefaultView && (
+                        <div>
+                            <h2 style={{ color: "#fff", marginBottom: "20px", fontSize: "1.5rem", display: "flex", alignItems: "center", gap: "10px" }}>✨ Recently Added</h2>
+                            <motion.div
+                                variants={containerVariants}
+                                initial="hidden"
+                                animate="visible"
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                                    gap: "24px"
+                                }}
+                            >
+                                {recentlyAddedListings.map((item) => renderListingCard(item, () => setSelectedListing(item)))}
+                            </motion.div>
+                        </div>
+                    )}
 
-                                <h3 style={{ margin: "0 0 8px", fontSize: "1.2rem", color: "#fff", lineHeight: "1.3" }}>{item.title}</h3>
-
-                                <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "15px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                                    {item.description}
-                                </p>
-
-                                <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "8px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "15px" }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", fontSize: "0.8rem" }}>
-                                        <Tag size={14} color={getListingBadgeColor(item.listingType)} />
-                                        <span style={{ textTransform: "capitalize" }}>{item.listingType}</span>
-                                    </div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", fontSize: "0.8rem" }}>
-                                        <MapPin size={14} />
-                                        {item.meetupLocations?.length > 0 ? item.meetupLocations[0].campus : "Campus General"}
-                                    </div>
-
-                                    {/* Trust Score indicator of seller */}
-                                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", fontSize: "0.8rem" }}>
-                                        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: item.seller?.trustScore > 80 ? "#00ff88" : item.seller?.trustScore > 50 ? "#ffd700" : "#ff4444" }}></div>
-                                        Seller Trust: {item.seller?.trustScore || 100}%
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    ))}
-                </motion.div>
+                    {/* All Listings Section */}
+                    {(generalListings.length > 0 || !isDefaultView) && (
+                        <div>
+                            <h2 style={{ color: "#fff", marginBottom: "20px", fontSize: "1.5rem" }}>
+                                {!isDefaultView ? "Search Results" : "More Listings"}
+                            </h2>
+                            <motion.div
+                                variants={containerVariants}
+                                initial="hidden"
+                                animate="visible"
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                                    gap: "24px"
+                                }}
+                            >
+                                {generalListings.map((item) => renderListingCard(item, () => setSelectedListing(item)))}
+                            </motion.div>
+                        </div>
+                    )}
+                </div>
             )}
 
             {/* Trade Request Modal */}

@@ -35,4 +35,8 @@ const reviewSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const Review = mongoose.model('Review', reviewSchema);
+
+// Create compound unique index for trade and reviewer
+reviewSchema.index({ trade: 1, reviewer: 1 }, { unique: true });
+
 export default Review;

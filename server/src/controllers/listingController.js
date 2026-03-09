@@ -1,6 +1,9 @@
 import Listing from '../models/Listing.js';
 import Category from '../models/Category.js';
 import MeetupLocation from '../models/MeetupLocation.js';
+import Wishlist from '../models/Wishlist.js';
+import Notification from '../models/Notification.js';
+import sendEmail from '../utils/sendEmail.js';
 
 // @desc    Create a new listing
 // @route   POST /api/listings
@@ -104,11 +107,43 @@ export const updateListing = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to update this listing' });
         }
 
+        // Check if price is dropping
+        const oldPrice = listing.price;
+        const newPrice = req.body.price;
+        const isPriceDrop = newPrice !== undefined && newPrice < oldPrice;
+
         listing = await Listing.findByIdAndUpdate(
             req.params.id,
             req.body,
             { new: true, runValidators: true }
         );
+
+        // Dispatch price drop notifications
+        if (isPriceDrop) {
+            try {
+                const wishlists = await Wishlist.find({ listing: listing._id, priceAlert: true }).populate('user');
+
+                for (const item of wishlists) {
+                    if (item.user) {
+                        await Notification.create({
+                            recipient: item.user._id,
+                            type: 'price_drop',
+                            title: 'Price Drop Alert!',
+                            message: `The price for "${listing.title}" has dropped from $${oldPrice} to $${newPrice}.`,
+                            relatedId: listing._id
+                        });
+
+                        await sendEmail({
+                            to: item.user.email,
+                            subject: 'Price Drop Alert: ' + listing.title,
+                            text: `Good news! The price for "${listing.title}" has dropped to $${newPrice}. Check it out on UniLoop now!`
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to process price drop notifications:", err);
+            }
+        }
 
         res.status(200).json(listing);
     } catch (error) {

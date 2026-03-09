@@ -3,6 +3,8 @@ import Listing from '../models/Listing.js';
 import TradeRequest from '../models/TradeRequest.js';
 import BorrowTracking from '../models/BorrowTracking.js';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
+import sendEmail from './sendEmail.js';
 
 const setupCronJobs = () => {
     // 1. Auto-expire listings (Runs every midnight)
@@ -52,14 +54,33 @@ const setupCronJobs = () => {
                 await borrow.save();
 
                 // Penalize borrower's punctuality and trust score
-                await User.findByIdAndUpdate(borrow.borrower, {
+                const borrower = await User.findByIdAndUpdate(borrow.borrower, {
                     $inc: {
                         punctualityScore: -5,
                         trustScore: -2 // small ding for every day late
                     }
                 });
 
-                // (Optional) Trigger a notification here to the borrower and lender
+                // Trigger a notification here to the borrower and lender
+                if (borrower) {
+                    try {
+                        await Notification.create({
+                            recipient: borrower._id,
+                            type: 'borrow_overdue',
+                            title: 'Borrow Overdue',
+                            message: `Your borrowed item from listing ${borrow.listing} is overdue! Please return it immediately.`,
+                            relatedId: borrow._id
+                        });
+
+                        await sendEmail({
+                            to: borrower.email,
+                            subject: 'OVERDUE: Return Borrowed Item',
+                            text: `You have an overdue borrowed item. Your trust score has been penalized. Please return it as soon as possible.`
+                        });
+                    } catch (err) {
+                        console.error("Failed to notify borrower of overdue:", err);
+                    }
+                }
             }
 
             console.log(`Marked ${overdueBorrows.length} borrows as overdue.`);
@@ -69,6 +90,53 @@ const setupCronJobs = () => {
     });
 
     console.log('✓ Scheduled Lifecycle Automation Cron Jobs');
+
+    // 4. Send borrow reminders 1 day before return date (Runs every midnight)
+    cron.schedule('0 0 * * *', async () => {
+        try {
+            console.log('Running borrow reminder cron job...');
+
+            // Find borrows due exactly tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
+
+            const dayAfterTomorrow = new Date(tomorrow);
+            dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+
+            const dueTomorrow = await BorrowTracking.find({
+                status: 'active',
+                returnDate: { $gte: tomorrow, $lt: dayAfterTomorrow }
+            }).populate('listing', 'title').populate('borrower', 'email');
+
+            for (const borrow of dueTomorrow) {
+                if (borrow.borrower) {
+                    try {
+                        await Notification.create({
+                            recipient: borrow.borrower._id,
+                            type: 'borrow_reminder',
+                            title: 'Return Reminder',
+                            message: `Your borrowed item "${borrow.listing?.title}" is due tomorrow.`,
+                            relatedId: borrow._id
+                        });
+
+                        await sendEmail({
+                            to: borrow.borrower.email,
+                            subject: 'Reminder: Return Borrowed Item Tomorrow',
+                            text: `This is a reminder that your borrowed item "${borrow.listing?.title}" is due tomorrow. Please coordinate with the lender to return it on time.`
+                        });
+                    } catch (err) {
+                        console.error("Failed to send reminder:", err);
+                    }
+                }
+            }
+
+            console.log(`Sent reminders for ${dueTomorrow.length} borrows.`);
+        } catch (error) {
+            console.error('Error in borrow reminder cron:', error);
+        }
+    });
+
 };
 
 export default setupCronJobs;

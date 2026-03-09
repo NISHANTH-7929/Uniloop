@@ -3,18 +3,22 @@ import { useAuth } from "../context/AuthContext";
 import { fetchConversations, fetchMessages, sendMessageFallback } from "../api/chatApi";
 import { io } from "socket.io-client";
 import { motion } from "framer-motion";
-import { Send, AlertTriangle } from "lucide-react";
+import { Send, AlertTriangle, ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
 import { format } from "date-fns";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const Chat = () => {
     const { user } = useAuth();
+    const location = useLocation();
+    const navigate = useNavigate();
     const [conversations, setConversations] = useState([]);
     const [activeConvo, setActiveConvo] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
     const [socket, setSocket] = useState(null);
     const messagesEndRef = useRef(null);
+    const [targetTradeId, setTargetTradeId] = useState(location.state?.tradeId || null);
 
     // Initial setup
     useEffect(() => {
@@ -31,8 +35,20 @@ const Chat = () => {
         try {
             const res = await fetchConversations();
             setConversations(res.data);
+
             if (res.data.length > 0) {
-                selectConversation(res.data[0]);
+                // If we navigated here from Dashboard with a specific tradeId
+                if (targetTradeId) {
+                    const targetConvo = res.data.find(c => c.tradeRequest?._id === targetTradeId);
+                    if (targetConvo) {
+                        selectConversation(targetConvo);
+                    } else {
+                        // Fallback if conversation not found
+                        selectConversation(res.data[0]);
+                    }
+                } else {
+                    selectConversation(res.data[0]);
+                }
             }
         } catch (error) {
             console.error("Failed to load conversations", error);
@@ -98,23 +114,73 @@ const Chat = () => {
     };
 
     const handleReport = () => {
-        // Mock prompt to report a user in the chat
         const promptConfirm = window.confirm("Are you sure you want to report this conversation to UniLoop Moderation?");
         if (promptConfirm) {
             toast.success("Moderators have been notified. We will review the chat logs.");
         }
     };
 
+    // Helper to determine the role of a participant in a conversation
+    const getParticipantRole = (participantId, convo) => {
+        if (!convo.tradeRequest) return null;
+
+        const isOwner = convo.tradeRequest.owner === participantId;
+        const isBorrowType = convo.tradeRequest.type === 'borrow';
+
+        if (isOwner) {
+            return isBorrowType ? 'Lender' : 'Seller';
+        } else {
+            return isBorrowType ? 'Borrower' : 'Buyer';
+        }
+    };
+
+    // Helper to render role badge
+    const RoleBadge = ({ role }) => {
+        if (!role) return null;
+
+        let bgColor = "rgba(255,255,255,0.1)";
+        let textColor = "var(--text-muted)";
+
+        if (role === 'Seller' || role === 'Lender') {
+            bgColor = "rgba(0, 212, 255, 0.15)";
+            textColor = "var(--accent-cyan)";
+        } else if (role === 'Buyer' || role === 'Borrower') {
+            bgColor = "rgba(112, 0, 255, 0.15)";
+            textColor = "var(--accent-purple)";
+        }
+
+        return (
+            <span style={{
+                background: bgColor,
+                color: textColor,
+                padding: "2px 8px",
+                borderRadius: "10px",
+                fontSize: "0.7rem",
+                fontWeight: "bold",
+                textTransform: "uppercase",
+                marginLeft: "8px",
+                verticalAlign: "middle"
+            }}>
+                {role}
+            </span>
+        );
+    };
+
     if (!user) return null;
 
     return (
         <div style={{ padding: "100px 20px 40px", maxWidth: "1200px", margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column" }}>
-            <h1 className="text-gradient" style={{ fontSize: "2.5rem", marginBottom: "20px" }}>Messages</h1>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: "20px", gap: "15px" }}>
+                <button onClick={() => navigate('/dashboard')} className="btn-neon" style={{ padding: "8px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <ArrowLeft size={20} />
+                </button>
+                <h1 className="text-gradient" style={{ fontSize: "2.5rem", margin: 0 }}>Messages</h1>
+            </div>
 
             <div className="glass-panel" style={{ display: "flex", flex: 1, overflow: "hidden", borderRadius: "16px", border: "1px solid var(--border-glass)" }}>
 
                 {/* Sidebar */}
-                <div style={{ width: "300px", borderRight: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", background: "rgba(0,0,0,0.2)" }}>
+                <div style={{ width: "320px", borderRight: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column", background: "rgba(0,0,0,0.2)" }}>
                     {conversations.length === 0 ? (
                         <div style={{ padding: "20px", color: "var(--text-muted)", textAlign: "center" }}>No active conversations</div>
                     ) : (
@@ -122,6 +188,7 @@ const Chat = () => {
                             {conversations.map((c) => {
                                 const otherParticipant = c.participants.find(p => p._id !== user._id);
                                 const isSelected = activeConvo?._id === c._id;
+                                const otherRole = getParticipantRole(otherParticipant?._id, c);
 
                                 return (
                                     <div
@@ -135,8 +202,9 @@ const Chat = () => {
                                             transition: "background 0.2s"
                                         }}
                                     >
-                                        <div style={{ fontWeight: "bold", color: isSelected ? "#fff" : "var(--text-secondary)", marginBottom: "4px", fontSize: "0.95rem" }}>
+                                        <div style={{ fontWeight: "bold", color: isSelected ? "#fff" : "var(--text-secondary)", marginBottom: "4px", fontSize: "0.95rem", display: "flex", alignItems: "center" }}>
                                             {otherParticipant?.email.split('@')[0]}
+                                            <RoleBadge role={otherRole} />
                                         </div>
                                         <div style={{ fontSize: "0.8rem", color: "var(--accent-purple)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                             {c.tradeRequest?.listing?.title || "Trade Negotiation"}
@@ -155,14 +223,17 @@ const Chat = () => {
                             {/* Chat Header */}
                             <div style={{ padding: "20px", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.02)" }}>
                                 <div>
-                                    <h3 style={{ margin: 0, color: "#fff", fontSize: "1.2rem" }}>
+                                    <h3 style={{ margin: 0, color: "#fff", fontSize: "1.2rem", display: "flex", alignItems: "center" }}>
                                         {activeConvo.participants.find(p => p._id !== user._id)?.email.split('@')[0]}
+                                        <RoleBadge role={getParticipantRole(activeConvo.participants.find(p => p._id !== user._id)?._id, activeConvo)} />
                                     </h3>
-                                    <p style={{ margin: "5px 0 0", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                                    <p style={{ margin: "5px 0 0", fontSize: "0.85rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "8px" }}>
                                         Re: {activeConvo.tradeRequest?.listing?.title}
+                                        <RoleBadge role={getParticipantRole(user._id, activeConvo)} />
+                                        <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>(You)</span>
                                     </p>
                                 </div>
-                                <button onClick={handleReport} className="btn-neon" style={{ padding: "6px", background: "rgba(255,68,68,0.1)", borderColor: "transparent", color: "#ff4444", borderRadius: "8px" }}>
+                                <button onClick={handleReport} className="btn-neon" style={{ padding: "6px", background: "rgba(255,68,68,0.1)", borderColor: "transparent", color: "#ff4444", borderRadius: "8px" }} title="Report User">
                                     <AlertTriangle size={18} />
                                 </button>
                             </div>

@@ -4,6 +4,8 @@ import Conversation from '../models/Conversation.js';
 import BorrowTracking from '../models/BorrowTracking.js';
 import User from '../models/User.js';
 import MeetupLocation from '../models/MeetupLocation.js';
+import Review from '../models/Review.js';
+import Notification from '../models/Notification.js';
 import sendEmail from '../utils/sendEmail.js';
 
 // @desc    Create a trade request
@@ -79,6 +81,19 @@ export const createTradeRequest = async (req, res) => {
             console.error("Email sending failed:", err);
         }
 
+        // In-App Notification
+        try {
+            await Notification.create({
+                recipient: listing.seller,
+                type: 'trade_request',
+                title: 'New Trade Request',
+                message: `You have received a new ${type} request for: ${listing.title}`,
+                relatedId: tradeRequest._id
+            });
+        } catch (err) {
+            console.error("In-app notification failed:", err);
+        }
+
         res.status(201).json(tradeRequest);
     } catch (error) {
         console.error(error);
@@ -103,16 +118,26 @@ export const getTradeRequests = async (req, res) => {
             query = { $or: [{ owner: req.user._id }, { requester: req.user._id }] };
         }
 
-        const trades = await TradeRequest.find(query)
+        let trades = await TradeRequest.find(query)
             .populate('listing', 'title price images listingType status')
             .populate('requester', 'email trustScore averageRating punctualityScore')
             .populate('owner', 'email trustScore averageRating punctualityScore')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean(); // Use lean() to return plain JS objects so we can easily mutate properties
+
+        // Fetch user's reviews to cross-reference
+        const myReviews = await Review.find({ reviewer: req.user._id }).select('trade');
+        const myReviewedTradeIds = myReviews.map(r => r.trade.toString());
+
+        trades = trades.map(trade => ({
+            ...trade,
+            isReviewedByMe: myReviewedTradeIds.includes(trade._id.toString())
+        }));
 
         res.status(200).json(trades);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error' });
+        console.error("Trade API Error:", error.message, error.stack);
+        res.status(500).json({ message: 'Server Error', details: error.message });
     }
 };
 
@@ -204,6 +229,19 @@ export const respondToTradeRequest = async (req, res) => {
             } catch (err) {
                 console.error("Email sending failed:", err);
             }
+        }
+
+        // In-App Notification for Requester
+        try {
+            await Notification.create({
+                recipient: tradeRequest.requester,
+                type: status === 'accepted' ? 'trade_accepted' : 'trade_rejected',
+                title: `Trade Request ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+                message: `Your trade request for ${tradeRequest.listing?.title || 'a listing'} has been ${status}.`,
+                relatedId: tradeRequest._id
+            });
+        } catch (err) {
+            console.error("In-app notification failed:", err);
         }
 
         res.status(200).json(tradeRequest);

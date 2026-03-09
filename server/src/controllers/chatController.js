@@ -1,5 +1,6 @@
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
+import validator from 'validator';
 
 // @desc    Get user's conversations
 // @route   GET /api/chat/conversations
@@ -75,10 +76,12 @@ export const sendMessage = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized for this conversation' });
         }
 
+        const sanitizedContent = validator.escape(content);
+
         const message = await Message.create({
             conversation: req.params.conversationId,
             sender: req.user._id,
-            content
+            content: sanitizedContent
         });
 
         conversation.lastMessage = message._id;

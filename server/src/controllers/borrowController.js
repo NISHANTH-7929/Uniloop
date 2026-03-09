@@ -28,8 +28,8 @@ export const getActiveBorrows = async (req, res) => {
 
         res.status(200).json(borrows);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error' });
+        console.error("Borrow API Error:", error.message, error.stack);
+        res.status(500).json({ message: 'Server Error', details: error.message });
     }
 };
 
