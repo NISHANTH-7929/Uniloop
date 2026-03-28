@@ -3,7 +3,8 @@ import rateLimit from 'express-rate-limit';
 import {
     getConversations,
     getMessages,
-    sendMessage
+    sendMessage,
+    resetAllChats
 } from '../controllers/chatController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -23,5 +24,9 @@ router.route('/conversations')
 router.route('/:conversationId/messages')
     .get(protect, getMessages)
     .post(protect, chatLimiter, sendMessage); // HTTP fallback with rate limiting
+
+// Admin-only: nuke all chat data
+router.route('/admin/reset')
+    .delete(protect, resetAllChats);
 
 export default router;

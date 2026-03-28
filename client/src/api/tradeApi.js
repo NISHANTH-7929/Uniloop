@@ -16,6 +16,7 @@ API.interceptors.request.use((req) => {
 
 export const createTradeRequest = (data) => API.post('/trades', data);
 export const fetchTrades = (params) => API.get('/trades', { params });
+export const fetchMyTrades = () => API.get('/trades');
 export const respondToTrade = (id, data) => API.put(`/trades/${id}/respond`, data);
 
 export const fetchBorrows = (params) => API.get('/borrows', { params });

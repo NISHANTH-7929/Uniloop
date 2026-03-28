@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { motion } from "framer-motion";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { ShieldAlert, TrendingUp, Users, AlertTriangle, ShieldCheck, UserX } from "lucide-react";
+import { ShieldAlert, TrendingUp, Users, AlertTriangle, ShieldCheck, UserX, MessageSquareX } from "lucide-react";
 
 // Inline API wrapper since it's only for this file
 const API_BASE = import.meta.env.VITE_API_URI || "http://localhost:5000";
@@ -124,6 +124,20 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleResetChats = async () => {
+        const confirm = window.prompt("DANGER: Type 'RESET_CHATS' to permanently delete ALL conversations and messages.");
+        if (confirm === 'RESET_CHATS') {
+            try {
+                const res = await API.delete('/chat/admin/reset');
+                toast.success(`Chat wiped: ${res.data.messagesDeleted} messages, ${res.data.conversationsDeleted} conversations deleted.`);
+            } catch (error) {
+                toast.error(error.response?.data?.message || "Failed to reset chats");
+            }
+        } else {
+            toast.info("Chat reset cancelled");
+        }
+    };
+
     if (!user) return null;
     if (user.role !== 'admin') {
         return (
@@ -149,7 +163,10 @@ const AdminDashboard = () => {
                     <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem", marginTop: "10px" }}>Global platform statistics, moderation queue, and role management.</p>
                 </div>
                 {/* DANGER ZONE */}
-                <div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <button onClick={handleResetChats} className="btn-neon" style={{ background: "rgba(255,100,0,0.1)", color: "#ff8c00", borderColor: "rgba(255,100,0,0.3)", display: "flex", alignItems: "center", gap: "8px", justifyContent: "center" }}>
+                        <MessageSquareX size={16} /> WIPE ALL CHATS
+                    </button>
                     <button onClick={handleResetData} className="btn-neon" style={{ background: "rgba(255,0,0,0.1)", color: "#ff4444", borderColor: "rgba(255,0,0,0.3)" }}>
                         WIPE & RESET TEST DATA
                     </button>

@@ -70,6 +70,23 @@ export const getListings = async (req, res) => {
     }
 };
 
+// @desc    Get current user's own listings (all statuses)
+// @route   GET /api/listings/mine
+// @access  Private
+export const getMyListings = async (req, res) => {
+    try {
+        const listings = await Listing.find({ seller: req.user._id })
+            .populate('category', 'name icon')
+            .populate('meetupLocations', 'name campus')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json(listings);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 // @desc    Get single listing
 // @route   GET /api/listings/:id
 // @access  Public
