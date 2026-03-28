@@ -93,3 +93,28 @@ export const sendMessage = async (req, res) => {
         res.status(500).json({ message: 'Server Error' });
     }
 };
+
+// @desc    Admin: Delete all conversations & messages
+// @route   DELETE /api/chat/admin/reset
+// @access  Admin only
+export const resetAllChats = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Admin access required' });
+        }
+
+        const [msgResult, convResult] = await Promise.all([
+            Message.deleteMany({}),
+            Conversation.deleteMany({})
+        ]);
+
+        res.status(200).json({
+            message: 'All chat data wiped successfully',
+            messagesDeleted: msgResult.deletedCount,
+            conversationsDeleted: convResult.deletedCount
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};

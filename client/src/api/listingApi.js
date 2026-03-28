@@ -17,9 +17,11 @@ API.interceptors.request.use((req) => {
 
 export const fetchListings = (params) => API.get('/listings', { params });
 export const fetchListingById = (id) => API.get(`/listings/${id}`);
+export const fetchMyListings = () => API.get('/listings/mine');
 export const createListing = (data) => API.post('/listings', data);
 export const updateListing = (id, data) => API.put(`/listings/${id}`, data);
 export const deleteListing = (id) => API.delete(`/listings/${id}`);
+export const updateListingStatus = (id, status) => API.put(`/listings/${id}`, { status });
 
 export const fetchCategories = () => API.get('/directory/categories');
 export const fetchLocations = () => API.get('/directory/locations');
