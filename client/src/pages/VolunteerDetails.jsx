@@ -50,6 +50,16 @@ const VolunteerDetails = () => {
     return (
         <div style={{ padding: "100px 20px 40px", maxWidth: 900, margin: "0 auto", position: 'relative' }}>
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+                {/* Top-left Action Bar */}
+                {/*<div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '20px' }}>
+                    <button 
+                        className="btn-neon primary" 
+                        onClick={() => navigate('/my-tickets')}
+                        style={{ padding: '8px 20px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    >
+                        View My Tickets
+                    </button>
+                </div>*/}
                 {(data.event.status === 'finished' || (data.event.endDate && new Date() > new Date(data.event.endDate))) ? (
                     <h1 className="text-gradient"> Past Contributions</h1>
                 ) : (
@@ -61,7 +71,9 @@ const VolunteerDetails = () => {
                 </div>
                 <div style={{ marginTop: 8, color: 'var(--text-muted)' }}>Organizer: {data.event.organizer?.email || data.event.organizer}</div>
                 <div style={{ marginTop: 8, color: 'var(--text-muted)' }}>Event Date: {new Date(data.event.date).toLocaleString()}</div>
-
+                <div style={{ marginTop: 12, display: 'inline-block', padding: '4px 12px', background: 'rgba(0, 255, 255, 0.1)', border: '1px solid var(--accent-cyan)', borderRadius: '20px', color: 'var(--accent-cyan)', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                    Duty Scope: {data.scopeTitle || "Grand Event (All Access)"}
+                </div>
                 <div style={{ marginTop: 20, padding: 24, background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
                     <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginBottom: 10 }}>Mission Impact</div>
                     <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{data.personsCheckedIn}</div>

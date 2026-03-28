@@ -51,6 +51,7 @@ const ViewTickets = () => {
     const filteredTickets = tickets.filter(t =>
     (t.alias?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.event?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.subevent?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.persons?.some(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())))
     );
 
@@ -68,11 +69,12 @@ const ViewTickets = () => {
                 </p>
             </motion.div>
 
+
             {/* Search Bar */}
             <div style={{ marginBottom: '30px', position: 'relative' }}>
                 <input
                     type="text"
-                    placeholder="Search by Alias or Event Name..."
+                    placeholder="Search by Event Name, Subevent Name, or Alias..."
                     className="neon-input w-100"
                     style={{ padding: '15px 40px', fontSize: '1.1rem' }}
                     value={searchTerm}
@@ -87,14 +89,17 @@ const ViewTickets = () => {
                     <p>Try a different alias or explorer name.</p>
                 </div>
             ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "24px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "24px" }}>
                     {filteredTickets.map(ticket => (
                         <motion.div
                             key={ticket._id}
+                            onClick={() => setSelectedTicket(ticket)}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
+                            whileHover={{ scale: 1.03, boxShadow: "0px 0px 20px rgba(0, 212, 255, 0.4)" }}
                             className="glass-panel"
                             style={{
+                                cursor: "pointer",
                                 padding: "24px",
                                 position: "relative",
                                 border: '1px solid var(--border-glass)',
@@ -104,10 +109,10 @@ const ViewTickets = () => {
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
                                 <div>
-                                    <div style={{ color: 'var(--accent-cyan)', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                                        {ticket.alias || "UNNAMED BOOKING"}
+                                    <div style={{ color: 'var(--accent-cyan)', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
+                                        {ticket.event?.title || "GRAND EVENT"}
                                     </div>
-                                    <h3 style={{ color: '#fff', margin: '5px 0' }}>{ticket.event?.title}</h3>
+                                    <h3 style={{ color: '#fff', margin: '0 0 5px', fontSize: '1.4rem' }}> {ticket.subevent?.title || ticket.alias || "UNNAMED"}</h3>
                                 </div>
                                 <span style={{
                                     padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem',
@@ -120,25 +125,10 @@ const ViewTickets = () => {
                             </div>
 
                             <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
-                                Date: {new Date(ticket.event?.date).toLocaleDateString()} at {new Date(ticket.event?.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                Date: {new Date(ticket.subevent?.date || ticket.event?.date).toLocaleDateString()} at {new Date(ticket.subevent?.date || ticket.event?.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </div>
 
-                            <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
-                                <button
-                                    className="btn-neon primary w-100"
-                                    style={{ padding: '10px' }}
-                                    onClick={() => setSelectedTicket(ticket)}
-                                >
-                                    Open Ticket
-                                </button>
-                                <button
-                                    className="btn-neon w-100"
-                                    style={{ padding: '10px', borderColor: 'var(--accent-pink)', color: 'var(--accent-pink)' }}
-                                    onClick={() => setTicketToDelete(ticket)}
-                                >
-                                    Delete
-                                </button>
-                            </div>
+
                         </motion.div>
                     ))}
                 </div>
@@ -169,20 +159,29 @@ const ViewTickets = () => {
                                     ))}
                                 </div>
 
-                                {selectedTicket.event?.subevents?.length > 0 && (
+                                {selectedTicket.subevent && (
                                     <div className="glass-panel" style={{ padding: '15px', background: 'rgba(112,0,255,0.05)' }}>
-                                        <h4 style={{ color: 'var(--accent-purple)', fontSize: '0.9rem', marginBottom: '10px' }}>SUB-EVENTS INCLUDED</h4>
-                                        {selectedTicket.event.subevents.map((s, i) => (
-                                            <div key={i} style={{ marginBottom: '10px' }}>
-                                                <div style={{ color: '#fff', fontWeight: 'bold' }}>{s.title}</div>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(s.date).toLocaleString()}</div>
-                                            </div>
-                                        ))}
+                                        <h4 style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', marginBottom: '10px' }}>REGISTERED SESSION</h4>
+                                        <div style={{ marginBottom: '10px' }}>
+                                            <div style={{ color: '#fff', fontWeight: 'bold' }}>{selectedTicket.subevent.title}</div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(selectedTicket.subevent.date).toLocaleString()}</div>
+                                            {selectedTicket.subevent.location?.name && (
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                                    Venue: {selectedTicket.subevent.location.name}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
 
-                            <button className="btn-neon primary w-100 mt-4" style={{ padding: '15px' }} onClick={() => setSelectedTicket(null)}>Close View</button>
+                            <div style={{ display: 'flex', gap: '15px', marginTop: '25px' }}>
+                                <button className="btn-neon primary w-100" style={{ padding: '15px' }} onClick={() => setSelectedTicket(null)}>Close View</button>
+                                <button className="btn-neon w-100" style={{ padding: '15px', borderColor: 'var(--accent-pink)', color: 'var(--accent-pink)' }} onClick={() => {
+                                    setTicketToDelete(selectedTicket);
+                                    setSelectedTicket(null);
+                                }}>Delete Ticket</button>
+                            </div>
                         </motion.div>
                     </div>
                 )}

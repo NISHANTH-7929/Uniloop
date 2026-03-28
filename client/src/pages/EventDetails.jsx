@@ -1,10 +1,76 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { getEvent, addSubevent, addEventUpdate, registerEvent, updateEvent, deleteEvent } from "../api/events";
+import { getEvent, addSubevent, addEventUpdate, registerEvent, updateEvent, deleteEvent, assignVolunteer, removeVolunteerFromEvent } from "../api/events";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "react-toastify";
 import Loader from "../components/Loader";
+
+const UpdateCard = ({ update }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    const MAX_LENGTH = 150;
+    const textStr = update.text || "";
+    // It's considered long if text exceeds limit OR if there are attachments
+    const isLong = textStr.length > MAX_LENGTH || (update.attachments && update.attachments.length > 0);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}
+            style={{ background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-glass)', overflow: 'hidden' }}
+            layout
+        >
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <motion.h4 layout="position" style={{ margin: 0, color: 'var(--accent-cyan)' }}>
+                    {update.title}
+                </motion.h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(update.createdAt).toLocaleDateString()}</span>
+                    {isLong && (
+                        <button
+                            type="button"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            style={{ background: 'rgba(255,100,200,0.1)', border: '1px solid var(--accent-pink)', color: 'var(--accent-pink)', fontSize: '0.75rem', padding: '4px 10px', borderRadius: '12px', cursor: 'pointer', outline: 'none' }}
+                        >
+                            {isExpanded ? "Collapse" : "View More"}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            <motion.div layout="position">
+                <p style={{ margin: 0, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                    {isExpanded ? textStr : (textStr.length > MAX_LENGTH ? textStr.substring(0, MAX_LENGTH) + "..." : textStr)}
+                </p>
+            </motion.div>
+
+            <AnimatePresence>
+                {isExpanded && update.attachments && update.attachments.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                        animate={{ opacity: 1, height: 'auto', marginTop: '15px' }}
+                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}
+                    >
+                        {update.attachments.map((a, i) => (
+                            <div key={i} className="media-container" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+                                {a.mime?.startsWith('video') ? (
+                                    <video controls src={a.data || a.url} style={{ width: '100%', borderRadius: '8px', boxShadow: 'var(--shadow-neon)' }} />
+                                ) : a.mime?.startsWith('image') ? (
+                                    <img src={a.data || a.url} alt={a.filename} style={{ width: '100%', borderRadius: '8px' }} />
+                                ) : (
+                                    <a href={a.data || a.url} download={a.filename} className="btn-neon w-100" style={{ fontSize: '0.85rem', padding: '10px' }}>
+                                        File: {a.filename}
+                                    </a>
+                                )}
+                            </div>
+                        ))}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
+    );
+};
 
 const EventDetails = () => {
     const { id } = useParams();
@@ -37,9 +103,10 @@ const EventDetails = () => {
         categories: [{ name: 'General', price: '' }]
     });
     const [updateForm, setUpdateForm] = useState({ title: '', text: '', attachments: [] });
-    const [editForm, setEditForm] = useState({ title: '', description: '', date: '', endDate: '', locationName: '', promoLink: '', imageFile: null, imageUrl: '', additionalMediaFiles: [] });
+    const [editForm, setEditForm] = useState({ title: '', description: '', date: '', endDate: '', locationName: '', promoLink: '' });
     const [selectedSubevent, setSelectedSubevent] = useState(null);
-
+    const [showVolunteersModal, setShowVolunteersModal] = useState(false);
+    const [viewedSubevent, setViewedSubevent] = useState(null);
     const LOCATION_OPTIONS = [
         "Tag Audi", "Vivekananda Audi", "Ground", "CEG Square", "CSE Department",
         "IT Department", "ECE Department", "Mechanical Department", "Civil Department",
@@ -84,6 +151,12 @@ const EventDetails = () => {
         yesterday.setDate(yesterday.getDate() - 1);
         if (new Date(subForm.date) < yesterday) {
             return toast.error("Event date cannot be strictly in the past");
+        }
+        if (!subForm.endDate) {
+            return toast.error("Event end date is required to correctly expire tickets");
+        }
+        if (new Date(subForm.endDate) < new Date(subForm.date)) {
+            return toast.error("End date cannot be before start date");
         }
 
         try {
@@ -135,10 +208,7 @@ const EventDetails = () => {
             date: toLocalISOString(event.date),
             endDate: event.endDate ? toLocalISOString(event.endDate) : '',
             locationName: event.location?.name || LOCATION_OPTIONS[0],
-            promoLink: event.promoLink || '',
-            imageFile: null,
-            imageUrl: event.image || '',
-            additionalMediaFiles: []
+            promoLink: event.promoLink || ''
         });
         setShowEditForm(true);
     };
@@ -154,34 +224,6 @@ const EventDetails = () => {
                 location: { name: editForm.locationName },
                 promoLink: editForm.promoLink
             };
-
-            if (editForm.imageFile) {
-                const b64 = await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(editForm.imageFile);
-                    reader.onload = () => resolve(reader.result);
-                });
-                payload.image = b64;
-            } else if (editForm.imageUrl) {
-                payload.image = editForm.imageUrl;
-            }
-
-            if (editForm.additionalMediaFiles.length > 0) {
-                payload.additionalMedia = [];
-                for (const f of editForm.additionalMediaFiles) {
-                    const b64 = await new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.readAsDataURL(f);
-                        reader.onload = () => resolve({
-                            filename: f.name,
-                            mime: f.type,
-                            data: reader.result
-                        });
-                    });
-                    payload.additionalMedia.push(b64);
-                }
-            }
-
             await updateEvent(id, payload);
             toast.success("Mission Core Updated Successfully");
             setShowEditForm(false);
@@ -256,7 +298,7 @@ const EventDetails = () => {
     const isMainOrganizer = user && event.organizer && (event.organizer._id === user._id || event.organizer === user._id);
     const isOrganizer = user && (user.role === 'admin' || isMainOrganizer);
     const isPartOrganizer = user && event.partOrganizers && event.partOrganizers.some(o => o._id === user._id || o === user._id);
-    const isVolunteer = user && event.volunteers && event.volunteers.some(v => v._id === user._id || v === user._id);
+    const isVolunteer = user && event.volunteers && event.volunteers.some(v => v.user?._id === user._id || v.user === user._id);
 
     return (
         <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', position: 'relative' }}>
@@ -422,16 +464,6 @@ const EventDetails = () => {
                                             <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Promotional Link / Trailer</label>
                                             <input type="url" className="form-control bg-dark text-white border-secondary" placeholder="https://youtube.com/..." value={editForm.promoLink} onChange={e => setEditForm({ ...editForm, promoLink: e.target.value })} />
                                         </div>
-                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-                                            <div>
-                                                <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Change Main Photo</label>
-                                                <input type="file" accept="image/*" className="form-control bg-dark text-white border-secondary" onChange={e => setEditForm({ ...editForm, imageFile: e.target.files[0] })} />
-                                            </div>
-                                            <div>
-                                                <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Add New Media (Photos, Videos, PDFs)</label>
-                                                <input type="file" multiple accept="image/*,video/*,.pdf" className="form-control bg-dark text-white border-secondary" onChange={e => setEditForm({ ...editForm, additionalMediaFiles: Array.from(e.target.files) })} />
-                                            </div>
-                                        </div>
                                         <button className="btn-neon primary" type="submit">Update Core</button>
                                     </motion.form>
                                 )}
@@ -470,37 +502,9 @@ const EventDetails = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             {event.updates && event.updates.length > 0 ? (
                                 event.updates.map((u, idx) => (
-                                    <motion.div
-                                        key={idx}
-                                        initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }}
-                                        style={{ background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-glass)' }}
-                                    >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                            <h4 style={{ margin: 0, color: 'var(--accent-cyan)' }}>{u.title}</h4>
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(u.createdAt).toLocaleDateString()}</span>
-                                        </div>
-                                        <p style={{ marginBottom: u.attachments?.length > 0 ? '15px' : 0 }}>{u.text}</p>
-
-                                        {u.attachments && u.attachments.length > 0 && (
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-                                                {u.attachments.map((a, i) => (
-                                                    <div key={i} className="media-container">
-                                                        {a.mime?.startsWith('video') ? (
-                                                            <video controls src={a.data || a.url} style={{ width: '100%', borderRadius: '8px', boxShadow: 'var(--shadow-neon)' }} />
-                                                        ) : a.mime?.startsWith('image') ? (
-                                                            <img src={a.data || a.url} alt={a.filename} style={{ width: '100%', borderRadius: '8px' }} />
-                                                        ) : (
-                                                            <a href={a.data || a.url} download={a.filename} className="btn-neon" style={{ width: '100%', fontSize: '0.85rem' }}>
-                                                                File: {a.filename}
-                                                            </a>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </motion.div>
+                                    <UpdateCard key={idx} update={u} />
                                 ))
-                            ) : (<p style={{ textAlign: 'center', padding: '20px' }}>No updates yet. Stay tuned!</p>)}
+                            ) : (<p style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>No updates yet. Stay tuned!</p>)}
                         </div>
                     </div>
 
@@ -524,7 +528,7 @@ const EventDetails = () => {
                                 <input className="neon-input" required placeholder="Subevent Title" value={subForm.title} onChange={e => setSubForm({ ...subForm, title: e.target.value })} />
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                     <input className="neon-input" type="datetime-local" placeholder="From Date" required min={toLocalISOString(new Date())} value={subForm.date} onChange={e => setSubForm({ ...subForm, date: e.target.value })} title="From Date" />
-                                    <input className="neon-input" type="datetime-local" placeholder="To Date (Optional)" min={subForm.date || toLocalISOString(new Date())} value={subForm.endDate} onChange={e => setSubForm({ ...subForm, endDate: e.target.value })} title="To Date" />
+                                    <input className="neon-input" type="datetime-local" placeholder="To Date" required min={subForm.date || toLocalISOString(new Date())} value={subForm.endDate} onChange={e => setSubForm({ ...subForm, endDate: e.target.value })} title="To Date" />
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                                     <input className="neon-input" placeholder="Location Name (Suggests Options)" list="locationOptions" value={subForm.locationName} onChange={e => setSubForm({ ...subForm, locationName: e.target.value })} />
@@ -610,6 +614,34 @@ const EventDetails = () => {
                                             >
                                                 View Details
                                             </button>
+                                            {(isMainOrganizer || (isPartOrganizer && s.creator && s.creator.toString() === user._id.toString())) && (
+                                                <div style={{ marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                                    <button
+                                                        className="btn-neon"
+                                                        onClick={() => { setViewedSubevent(s); setShowVolunteersModal(true); }}
+                                                        style={{ borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)', padding: '4px 12px', fontSize: '0.8rem' }}
+                                                    >
+                                                        View Volunteers
+                                                    </button>
+                                                    <button
+                                                        className="btn-neon"
+                                                        onClick={async () => {
+                                                            const emailOrRoll = window.prompt(`Assign Volunteer specifically for '${s.title}'\n\nEnter Roll Number or Email:`);
+                                                            if (!emailOrRoll) return;
+                                                            try {
+                                                                await assignVolunteer(event._id, emailOrRoll, s._id);
+                                                                toast.success(`Volunteer officially assigned to ${s.title}`);
+                                                                loadEventData();
+                                                            } catch (err) {
+                                                                toast.error(err.response?.data?.message || "Failed to assign volunteer");
+                                                            }
+                                                        }}
+                                                        style={{ borderColor: 'var(--accent-purple)', color: 'var(--accent-purple)', padding: '4px 12px', fontSize: '0.8rem' }}
+                                                    >
+                                                        + Assign Volunteer
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ))
@@ -717,11 +749,11 @@ const EventDetails = () => {
                                         </span>
                                     </label>
 
-                                    {isVolunteer && (
+                                    {user && event?.volunteers?.some(v => (v.user?._id === user._id || v.user === user._id) && (v.assignedTo === 'grand' || (v.assignedTo === 'subevent' && v.subeventId && selectedSubevent && v.subeventId.toString() === selectedSubevent._id.toString()))) && (
                                         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '5px 0' }}>
                                             <input type="checkbox" checked={volunteerAcknowledge} onChange={e => setVolunteerAcknowledge(e.target.checked)} style={{ width: 18, height: 18, marginTop: 3 }} />
                                             <span style={{ color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>
-                                                I acknowledge that as a volunteer for this event, I am participating in an official capacity and cannot be a participant myself. I have not included my own name in this attendee list.
+                                                I acknowledge that as a volunteer for this event or subevent, I am participating in an official capacity and cannot be a participant myself. I have not included my own name in this attendee list.
                                             </span>
                                         </label>
                                     )}
@@ -758,6 +790,49 @@ const EventDetails = () => {
                             <div style={{ display: "flex", gap: "10px" }}>
                                 <button className="btn-neon primary flex-grow-1" style={{ padding: '12px' }} onClick={proceedWithBooking} type="button">Yes, Confirm & Book</button>
                                 <button className="btn-neon text-white flex-grow-1" style={{ padding: '12px' }} onClick={() => setShowFinalConfirm(false)} type="button">Back to Edit</button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {showVolunteersModal && viewedSubevent && (
+                    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, backdropFilter: "blur(10px)" }}>
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel" style={{ width: "90%", maxWidth: "500px", padding: "30px", maxHeight: "80vh", overflowY: "auto", border: '1px solid var(--accent-cyan)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <h3 className="text-gradient" style={{ margin: 0 }}>Volunteers for {viewedSubevent.title}</h3>
+                                <button className="btn-neon" style={{ padding: '4px 12px', fontSize: '0.8rem' }} onClick={() => setShowVolunteersModal(false)}>Close</button>
+                            </div>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {event.volunteers?.filter(v => v.assignedTo === 'subevent' && v.subeventId === viewedSubevent._id).length > 0 ? (
+                                    event.volunteers.filter(v => v.assignedTo === 'subevent' && v.subeventId === viewedSubevent._id).map(v => (
+                                        <div key={v._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '8px' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 'bold' }}>{v.user?.email?.split('@')[0] || "Unknown"}</div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{v.user?.email || "No Email"}</div>
+                                            </div>
+                                            <button 
+                                                className="btn-neon" 
+                                                style={{ borderColor: 'var(--accent-pink)', color: 'var(--accent-pink)', padding: '6px 12px', fontSize: '0.8rem' }}
+                                                onClick={async () => {
+                                                    if(window.confirm("Are you sure you want to remove this volunteer?")) {
+                                                        try {
+                                                            await removeVolunteerFromEvent(event._id, v.user._id, viewedSubevent._id);
+                                                            toast.success('Volunteer successfully removed.');
+                                                            loadEventData();
+                                                        } catch(err) {
+                                                            toast.error(err.response?.data?.message || 'Failed to remove volunteer');
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>No volunteers assigned exclusively to this subevent.</p>
+                                )}
                             </div>
                         </motion.div>
                     </div>

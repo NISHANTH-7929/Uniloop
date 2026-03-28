@@ -28,7 +28,6 @@ const Organizer = () => {
     const [endDate, setEndDate] = useState("");
     const [imageUrl, setImageUrl] = useState("");
     const [imageFile, setImageFile] = useState(null);
-    const [additionalMediaFiles, setAdditionalMediaFiles] = useState([]);
     const [promoLink, setPromoLink] = useState("");
 
     // Management State
@@ -81,7 +80,6 @@ const Organizer = () => {
         setImageUrl("");
         setImageFile(null);
         setPromoLink("");
-        setAdditionalMediaFiles([]);
         setShowCreateForm(false);
     };
 
@@ -110,22 +108,6 @@ const Organizer = () => {
                 eventPayload.image = b64;
             } else if (imageUrl) {
                 eventPayload.image = imageUrl;
-            }
-
-            if (additionalMediaFiles.length > 0) {
-                eventPayload.additionalMedia = [];
-                for (const f of additionalMediaFiles) {
-                    const b64 = await new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.readAsDataURL(f);
-                        reader.onload = () => resolve({
-                            filename: f.name,
-                            mime: f.type,
-                            data: reader.result
-                        });
-                    });
-                    eventPayload.additionalMedia.push(b64);
-                }
             }
 
             await createEvent(eventPayload);
@@ -237,6 +219,16 @@ const Organizer = () => {
 
     return (
         <div style={{ padding: "100px 20px 40px", maxWidth: "1200px", margin: "0 auto", minHeight: '100vh' }}>
+            {/* Top-left Action Bar }
+            {<div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                <button
+                    className="btn-neon primary"
+                    onClick={() => navigate('/my-tickets')}
+                    style={{ padding: '8px 20px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                    View My Tickets
+                </button>
+            </div>*/}
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: "30px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "20px" }}>
                 <div>
                     <h1 className="text-gradient" style={{ fontSize: "3rem", marginBottom: "10px" }}>Organizer Hub</h1>
@@ -284,10 +276,6 @@ const Organizer = () => {
                                     <div>
                                         <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Main Photo *</label>
                                         <input type="file" accept="image/*" className="form-control bg-dark text-white border-secondary" onChange={e => setImageFile(e.target.files[0])} required />
-                                    </div>
-                                    <div>
-                                        <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Additional Media (Photos, Videos, PDFs)</label>
-                                        <input type="file" multiple accept="image/*,video/*,.pdf" className="form-control bg-dark text-white border-secondary" onChange={e => setAdditionalMediaFiles(Array.from(e.target.files))} />
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '15px' }}>

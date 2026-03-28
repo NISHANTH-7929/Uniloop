@@ -1,9 +1,9 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppNavbar from "./components/Navbar";
-import AuthPage from "./pages/AuthPage"; // New combined page
+import AuthPage from "./pages/AuthPage";
 import VerifyEmail from "./pages/VerifyEmail";
-import VerificationSent from "./pages/VerificationSent"; // New page
+import VerificationSent from "./pages/VerificationSent";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
@@ -46,7 +46,7 @@ function App() {
           <Route path="/events" element={<Events />} />
           <Route path="/events/:id" element={<EventDetails />} />
           <Route path="/events/:id/subevents/:subeventId" element={<SubeventDetails />} />
-          <Route path="/view-tickets" element={<ViewTickets />} />
+          <Route path="/my-tickets" element={<ViewTickets />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/scanner/:eventId" element={<Scanner />} />
           <Route path="/volunteer/:eventId/:volunteerId" element={<VolunteerDetails />} />

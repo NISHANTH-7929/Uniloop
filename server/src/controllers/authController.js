@@ -55,8 +55,6 @@ export const register = async (req, res) => {
             }
         } else if (process.env.NODE_ENV === 'production') {
             return res.status(400).json({ message: "ReCaptcha is required" });
-        } else {
-            console.log("Skipping ReCaptcha verification (No key or token provided in dev)");
         }
 
 
@@ -388,7 +386,7 @@ export const respondToVolunteerRequest = async (req, res) => {
 
                     const userDoc = await User.findById(userId);
                     if (userDoc && userDoc.role !== 'organizer' && userDoc.role !== 'admin') {
-                        userDoc.role = 'organizer';
+                        userDoc.role = 'co-organizer';
                         await userDoc.save();
                     }
 
@@ -396,7 +394,7 @@ export const respondToVolunteerRequest = async (req, res) => {
                         user: userId,
                         event: event._id,
                         previousRole: req.user.role,
-                        newRole: 'organizer',
+                        newRole: 'co-organizer',
                         reason: 'Accepted part organizer request',
                         changedBy: userId
                     });
@@ -406,8 +404,8 @@ export const respondToVolunteerRequest = async (req, res) => {
                 notification.type = "success";
             } else {
                 // Check if already a volunteer
-                if (!event.volunteers.includes(userId)) {
-                    event.volunteers.push(userId);
+                if (!event.volunteers.some(v => v.user.toString() === userId.toString())) {
+                    event.volunteers.push({ user: userId, assignedTo: 'grand' });
                     await event.save();
 
                     // Log role transition
@@ -461,8 +459,8 @@ export const respondToVolunteerRequest = async (req, res) => {
 export const markNotificationsAsRead = async (req, res) => {
     try {
         await Notification.updateMany(
-            { 
-                user: req.user._id, 
+            {
+                user: req.user._id,
                 isRead: false,
                 $or: [{ action: null }, { action: { $exists: false } }, { action: "" }]
             },

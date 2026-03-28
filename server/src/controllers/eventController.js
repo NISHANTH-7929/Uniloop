@@ -34,12 +34,13 @@ export const createEvent = async (req, res) => {
 export const getEvents = async (req, res) => {
     try {
         const events = await Event.find()
+            .select('-additionalMedia -updates -subevents.updates -subevents.additionalMedia')
             .populate('organizer', 'email role')
             .populate('partOrganizers', 'email role')
-            .populate('volunteers', 'email role');
+            .populate('volunteers.user', 'email role');
         res.json(events);
     } catch (error) {
-        res.status(500).json({ message: "Server error fetching events" });
+        res.status(500).json({ message: 'Server error fetching events' });
     }
 };
 
@@ -51,7 +52,7 @@ export const getEventById = async (req, res) => {
         const event = await Event.findById(req.params.id)
             .populate('organizer', 'email role')
             .populate('partOrganizers', 'email role')
-            .populate('volunteers', 'email role');
+            .populate('volunteers.user', 'email role');
 
         if (!event) {
             return res.status(404).json({ message: "Event not found" });
@@ -94,7 +95,7 @@ export const addSubevent = async (req, res) => {
             ? categories
             : [{ name: 'General', price: 0 }];
 
-        const sub = { title, description, date, endDate, capacity, isUnlimitedCapacity, location, qr_secret: qr, categories: validCategories };
+        const sub = { title, description, date, endDate, capacity, isUnlimitedCapacity, location, qr_secret: qr, categories: validCategories, creator: req.user._id };
         event.subevents = event.subevents || [];
         event.subevents.push(sub);
         await event.save();
@@ -126,7 +127,7 @@ export const addEventUpdate = async (req, res) => {
         // Notify all registered users (tickets) and volunteers
         const tickets = await Ticket.find({ event: event._id }).select('user');
         const userIds = new Set(tickets.map(t => t.user.toString()));
-        if (event.volunteers) event.volunteers.forEach(v => userIds.add(v.toString()));
+        if (event.volunteers) event.volunteers.forEach(v => userIds.add(v.user.toString()));
 
         const notifications = [];
         for (let uid of userIds) {
@@ -152,7 +153,7 @@ export const addEventUpdate = async (req, res) => {
 // @access  Private (Organizer)
 export const assignVolunteer = async (req, res) => {
     try {
-        const { rollNumberOrEmail } = req.body;
+        const { rollNumberOrEmail, subeventId } = req.body;
         const event = await Event.findById(req.params.id);
 
         if (!event) return res.status(404).json({ message: "Event not found" });
@@ -163,7 +164,6 @@ export const assignVolunteer = async (req, res) => {
             return res.status(403).json({ message: "Not authorized" });
         }
 
-        // Find user by rollNumber/email
         let emailQuery = rollNumberOrEmail;
         if (!rollNumberOrEmail.includes('@')) {
             emailQuery = `${rollNumberOrEmail}@student.annauniv.edu`;
@@ -174,48 +174,64 @@ export const assignVolunteer = async (req, res) => {
             return res.status(404).json({ message: "Student not found with that roll number/email" });
         }
 
-        if (event.volunteers.includes(volunteer._id)) {
-            return res.status(400).json({ message: "Already a volunteer for this event" });
+        if (event.volunteers.some(v => v.user.toString() === volunteer._id.toString())) {
+            return res.status(400).json({ message: "Already a volunteer for this event/subevent" });
         }
 
-        // Assign Volunteer
-        event.volunteers.push(volunteer._id);
+        // Assign Volunteer Object
+        const assignmentOpts = subeventId 
+            ? { user: volunteer._id, assignedTo: 'subevent', subeventId }
+            : { user: volunteer._id, assignedTo: 'grand' };
+            
+        event.volunteers.push(assignmentOpts);
         await event.save();
 
-        // 1. Log transition
         await RoleTransition.create({
             user: volunteer._id,
             event: event._id,
             previousRole: volunteer.role,
             newRole: 'volunteer',
-            reason: 'Assigned by organizer',
+            reason: subeventId ? 'Assigned to subevent' : 'Assigned to grand event',
             changedBy: req.user._id
         });
 
-        // 2. Check if user already has a ticket and cancel it
-        const ticket = await Ticket.findOne({ user: volunteer._id, event: event._id, status: 'ACTIVE' });
-        if (ticket) {
-            ticket.status = 'CANCELLED';
-            await ticket.save();
+        // Smart Ticket Cancellations based on volunteer scope
+        const ticketQuery = subeventId 
+            ? { user: volunteer._id, event: event._id, subevent: subeventId, status: 'ACTIVE' }
+            : { user: volunteer._id, event: event._id, status: 'ACTIVE' };
+            
+        const ticketsToCancel = await Ticket.find(ticketQuery);
+        for (let t of ticketsToCancel) {
+            t.status = 'CANCELLED';
+            await t.save();
             event.registeredCount = Math.max(0, event.registeredCount - 1);
-            await event.save();
+            if (t.subevent) {
+                const subRef = event.subevents.id(t.subevent);
+                if (subRef) subRef.registeredCount = Math.max(0, subRef.registeredCount - 1);
+            }
+        }
+        await event.save();
 
-            // Note: Add business logic here to trigger actual financial refund API if needed.
-
+        if (ticketsToCancel.length > 0) {
             await Notification.create({
                 user: volunteer._id,
                 type: 'warning',
                 title: 'Registration Cancelled',
-                message: `Your paid registration for ${event.title} was cancelled and refunded because you were assigned as a volunteer.`
+                message: `Your paid ticket for ${event.title} was cancelled and refunded due to your volunteer assignment.`
             });
         }
 
-        // 3. Notify them
+        let notifMsg = `You have been assigned as a volunteer for ${event.title}.`;
+        if (subeventId) {
+            const sub = event.subevents.id(subeventId);
+            if (sub) notifMsg = `You've been selected as a volunteer for the subevent: ${sub.title} under ${event.title}.`;
+        }
+
         await Notification.create({
             user: volunteer._id,
             type: 'success',
             title: 'Volunteer Assigned',
-            message: `You have been assigned as a volunteer for ${event.title}. Access the scanner from your dashboard.`
+            message: notifMsg
         });
 
         res.json({ message: "Volunteer assigned successfully", event });
@@ -288,13 +304,13 @@ export const getUsersForRecruitment = async (req, res) => {
                 if (ev.partOrganizers && ev.partOrganizers.some(o => o.toString() === u._id.toString())) {
                     clashes.push({ type: 'co_organizer', eventName: ev.title });
                 }
-                if (ev.volunteers && ev.volunteers.some(v => v.toString() === u._id.toString())) {
+                if (ev.volunteers && ev.volunteers.some(v => v.user.toString() === u._id.toString())) {
                     clashes.push({ type: 'volunteer', eventName: ev.title });
                 }
             });
 
             // Also check if already a volunteer or partOrganizer for THIS event
-            const isAlreadyVolunteer = targetEvent.volunteers && targetEvent.volunteers.some(v => v.toString() === u._id.toString());
+            const isAlreadyVolunteer = targetEvent.volunteers && targetEvent.volunteers.some(v => v.user.toString() === u._id.toString());
             const isAlreadyPartOrganizer = targetEvent.partOrganizers && targetEvent.partOrganizers.some(o => o.toString() === u._id.toString());
 
             return { ...userObj, clashes, isAlreadyVolunteer, isAlreadyPartOrganizer };
@@ -326,7 +342,7 @@ export const sendVolunteerRequest = async (req, res) => {
         const targetUser = await User.findById(targetUserId);
         if (!targetUser) return res.status(404).json({ message: "User not found" });
 
-        if (targetEvent.volunteers && targetEvent.volunteers.includes(targetUserId)) {
+        if (targetEvent.volunteers && targetEvent.volunteers.some(v => v.user.toString() === targetUserId.toString())) {
             return res.status(400).json({ message: "User is already a volunteer for this event" });
         }
 
@@ -423,22 +439,22 @@ export const updateEvent = async (req, res) => {
         const oldTitle = event.title;
         event = await Event.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
 
-        // Notify all registered users about the update
-        const participants = await Ticket.find({ event: event._id }).distinct('user');
-        const volunteers = event.volunteers || [];
-        const usersToNotify = [...new Set([...participants.map(p => p.toString()), ...volunteers.map(v => v.toString())])];
+        res.json({ message: "Event updated successfully", event });
 
-        for (const userId of usersToNotify) {
-            await Notification.create({
-                user: userId,
+        // Fire-and-forget: notify participants in background (does not block response)
+        Ticket.find({ event: event._id }).distinct('user').then(participants => {
+            const volIds = (event.volunteers || []).map(v => v.user.toString());
+            const allIds = [...new Set([...participants.map(p => p.toString()), ...volIds])];
+            if (allIds.length === 0) return;
+            const notifs = allIds.map(uid => ({
+                user: uid,
                 type: 'info',
                 title: 'Event Updated',
                 message: `An event you are part of, "${event.title}", has been updated by the organizer.`,
                 relatedEvent: event._id
-            });
-        }
-
-        res.json({ message: "Event updated successfully", event });
+            }));
+            Notification.insertMany(notifs).catch(err => console.error('Notification error:', err));
+        }).catch(err => console.error('Ticket lookup error:', err));
     } catch (error) {
         console.error("Update event error:", error);
         res.status(500).json({ message: "Server error updating event" });
@@ -464,7 +480,7 @@ export const deleteEvent = async (req, res) => {
         const partOrganizers = event.partOrganizers || [];
 
         const staffIds = [...new Set([
-            ...volunteers.map(v => v.toString()),
+            ...volunteers.map(v => v.user.toString()),
             ...partOrganizers.map(po => po.toString())
         ])];
 
@@ -522,7 +538,7 @@ export const requestVolunteerWithdrawal = async (req, res) => {
         const event = await Event.findById(req.params.id);
         if (!event) return res.status(404).json({ message: "Event not found" });
 
-        const isVolunteer = event.volunteers && event.volunteers.some(v => v.toString() === req.user._id.toString());
+        const isVolunteer = event.volunteers && event.volunteers.some(v => v.user.toString() === req.user._id.toString());
         if (!isVolunteer) return res.status(403).json({ message: "You are not a volunteer for this event" });
 
         // Check if more than 1 hour remains
@@ -570,7 +586,7 @@ export const handleWithdrawalResponse = async (req, res) => {
         const volunteerId = notification.fromUser;
 
         if (response === 'accept') {
-            event.volunteers = event.volunteers.filter(v => v.toString() !== volunteerId.toString());
+            event.volunteers = event.volunteers.filter(v => v.user.toString() !== volunteerId.toString());
             await event.save();
 
             await Notification.create({
@@ -649,20 +665,37 @@ export const removeVolunteer = async (req, res) => {
             return res.status(403).json({ message: "Not authorized" });
         }
 
-        event.volunteers = event.volunteers.filter(v => v.toString() !== req.params.volunteerId);
-        if (event.partOrganizers) {
-            event.partOrganizers = event.partOrganizers.filter(o => o.toString() !== req.params.volunteerId);
+        const subeventId = req.query.subeventId;
+
+        if (subeventId) {
+            event.volunteers = event.volunteers.filter(v => !(v.user.toString() === req.params.volunteerId.toString() && v.assignedTo === 'subevent' && v.subeventId && v.subeventId.toString() === subeventId.toString()));
+            
+            const subRef = event.subevents.id(subeventId);
+            const subName = subRef ? subRef.title : "a subevent";
+
+            await Notification.create({
+                user: req.params.volunteerId,
+                type: 'error',
+                title: 'Subevent Volunteer Removed',
+                message: `You have been removed as a volunteer for the subevent: ${subName}.`,
+                relatedEvent: event._id
+            });
+        } else {
+            event.volunteers = event.volunteers.filter(v => v.user.toString() !== req.params.volunteerId.toString());
+            if (event.partOrganizers) {
+                event.partOrganizers = event.partOrganizers.filter(o => o.toString() !== req.params.volunteerId);
+            }
+            
+            // Notify volunteer globally
+            await Notification.create({
+                user: req.params.volunteerId,
+                type: 'error',
+                title: 'Volunteer Status Removed',
+                message: `Fired: You have been removed from your volunteer position for "${event.title}".`,
+                relatedEvent: event._id
+            });
         }
         await event.save();
-
-        // Notify volunteer
-        await Notification.create({
-            user: req.params.volunteerId,
-            type: 'error',
-            title: 'Volunteer Status Removed',
-            message: `Fired: You have been removed from your volunteer position for "${event.title}".`,
-            relatedEvent: event._id
-        });
 
         res.json({ message: "Volunteer removed successfully ('Fired' message sent)" });
     } catch (error) {
@@ -679,7 +712,7 @@ export const getSubeventDetails = async (req, res) => {
         const event = await Event.findById(req.params.id)
             .populate('organizer', 'email role')
             .populate('partOrganizers', 'email role')
-            .populate('volunteers', 'email role');
+            .populate('volunteers.user', 'email role');
 
         if (!event) return res.status(404).json({ message: "Event not found" });
 
@@ -701,14 +734,18 @@ export const updateSubevent = async (req, res) => {
         const event = await Event.findById(req.params.id);
         if (!event) return res.status(404).json({ message: "Event not found" });
 
-        if (event.organizer.toString() !== req.user._id.toString() &&
-            (!event.partOrganizers || !event.partOrganizers.includes(req.user._id.toString())) &&
-            req.user.role !== 'admin') {
-            return res.status(403).json({ message: "Not authorized to update this subevent" });
-        }
-
         const subevent = event.subevents.id(req.params.subeventId);
         if (!subevent) return res.status(404).json({ message: "Subevent not found" });
+
+        // Authorization: Only subevent creator (or admin)
+        // If legacy subevent (no creator), fallback to main organizer
+        const isSubeventCreator = subevent.creator 
+            ? subevent.creator.toString() === req.user._id.toString()
+            : event.organizer.toString() === req.user._id.toString();
+
+        if (!isSubeventCreator && req.user.role !== 'admin') {
+            return res.status(403).json({ message: "Only the creator of this subevent can modify it" });
+        }
 
         // Update fields
         const { title, description, date, endDate, locationName, capacity, isUnlimitedCapacity, categories, image, promoLink, additionalMedia } = req.body;
@@ -743,14 +780,17 @@ export const addSubeventUpdate = async (req, res) => {
         const event = await Event.findById(req.params.id);
         if (!event) return res.status(404).json({ message: "Event not found" });
 
-        if (event.organizer.toString() !== req.user._id.toString() &&
-            (!event.partOrganizers || !event.partOrganizers.includes(req.user._id.toString())) &&
-            req.user.role !== 'admin') {
-            return res.status(403).json({ message: "Not authorized" });
-        }
-
         const subevent = event.subevents.id(req.params.subeventId);
         if (!subevent) return res.status(404).json({ message: "Subevent not found" });
+
+        // Authorization: Only subevent creator (or admin)
+        const isSubeventCreator = subevent.creator 
+            ? subevent.creator.toString() === req.user._id.toString()
+            : event.organizer.toString() === req.user._id.toString();
+
+        if (!isSubeventCreator && req.user.role !== 'admin') {
+            return res.status(403).json({ message: "Only the creator of this subevent can post updates" });
+        }
 
         const { title, text, attachments } = req.body;
         // Normalize: store base64 in data field for consistent retrieval
@@ -762,26 +802,24 @@ export const addSubeventUpdate = async (req, res) => {
         subevent.updates = subevent.updates || [];
         subevent.updates.unshift({ title, text, attachments: normalizedAttachments });
 
-        await event.save();
+        // Respond immediately so the user doesn't wait for notifications
+        res.status(201).json({ message: "Buzz posted successfully", updates: subevent.updates });
 
-        // Notify registered users of THIS specific subevent
-        const tickets = await Ticket.find({ event: event._id, subevent: subevent._id }).select('user');
-        const userIds = new Set(tickets.map(t => t.user.toString()));
-        if (event.volunteers) event.volunteers.forEach(v => userIds.add(v.toString()));
-
-        const notifications = [];
-        for (let uid of userIds) {
-            notifications.push({
+        // Fire-and-forget: notify subevent attendees in background
+        Ticket.find({ event: event._id, subevent: subevent._id }).select('user').then(tickets => {
+            const userIds = new Set(tickets.map(t => t.user.toString()));
+            if (event.volunteers) event.volunteers.forEach(v => userIds.add(v.user.toString()));
+            const notifications = [...userIds].map(uid => ({
                 user: uid,
                 type: 'info',
                 title: `Update for ${subevent.title}`,
                 message: title || 'New update',
                 relatedEvent: event._id
-            });
-        }
-        if (notifications.length > 0) await Notification.insertMany(notifications);
-
-        res.status(201).json({ message: "Buzz posted successfully", updates: subevent.updates });
+            }));
+            if (notifications.length > 0) {
+                Notification.insertMany(notifications).catch(err => console.error('Notification error:', err));
+            }
+        }).catch(err => console.error('Ticket lookup error:', err));
     } catch (error) {
         console.error("Add Subevent Update Error:", error);
         res.status(500).json({ message: "Server error posting subevent update" });
@@ -796,14 +834,19 @@ export const deleteSubevent = async (req, res) => {
         const event = await Event.findById(req.params.id);
         if (!event) return res.status(404).json({ message: "Event not found" });
 
-        const isOwner = event.organizer.toString() === req.user._id.toString();
-        const isPartOrg = event.partOrganizers && event.partOrganizers.map(p => p.toString()).includes(req.user._id.toString());
-        if (!isOwner && !isPartOrg && req.user.role !== 'admin') {
-            return res.status(403).json({ message: "Not authorized to delete this subevent" });
-        }
-
         const idx = event.subevents.findIndex(s => s._id.toString() === req.params.subeventId);
         if (idx === -1) return res.status(404).json({ message: "Subevent not found" });
+
+        const subevent = event.subevents[idx];
+
+        // Authorization: Only subevent creator (or admin)
+        const isSubeventCreator = subevent.creator 
+            ? subevent.creator.toString() === req.user._id.toString()
+            : event.organizer.toString() === req.user._id.toString();
+
+        if (!isSubeventCreator && req.user.role !== 'admin') {
+            return res.status(403).json({ message: "Only the creator of this subevent can delete it" });
+        }
 
         const title = event.subevents[idx].title;
         event.subevents.splice(idx, 1);
