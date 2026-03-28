@@ -5,6 +5,8 @@ import BorrowTracking from '../models/BorrowTracking.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import sendEmail from './sendEmail.js';
+import LostFoundItem from '../models/LostFoundItem.js';
+import { getIO } from './socketUtils.js';
 
 const setupCronJobs = () => {
     // 1. Auto-expire listings (Runs every midnight)
@@ -134,6 +136,34 @@ const setupCronJobs = () => {
             console.log(`Sent reminders for ${dueTomorrow.length} borrows.`);
         } catch (error) {
             console.error('Error in borrow reminder cron:', error);
+        }
+    });
+
+
+    // 5. Auto-archive expired Lost & Found items (Runs every hour)
+    cron.schedule('0 * * * *', async () => {
+        try {
+            const expired = await LostFoundItem.find({
+                status: 'active',
+                expiresAt: { $lt: new Date() },
+            });
+            for (const item of expired) {
+                item.status = 'archived';
+                await item.save();
+                if (item.reporter && !item.isAnonymous) {
+                    try {
+                        getIO().to(item.reporter.toString()).emit('lostfound:expired', {
+                            itemId:    item._id,
+                            itemTitle: item.title,
+                        });
+                    } catch (_) {}
+                }
+            }
+            if (expired.length > 0) {
+                console.log(`Archived ${expired.length} expired Lost & Found items.`);
+            }
+        } catch (error) {
+            console.error('Error in L&F expiry cron:', error);
         }
     });
 

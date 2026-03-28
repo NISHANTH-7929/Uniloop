@@ -58,6 +58,44 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    hostelBlock: {
+        type: String,
+        default: null,
+    },
+    communitySupport: {
+        bloodType: {
+            type: String,
+            enum: ["A+","A-","B+","B-","AB+","AB-","O+","O-", null],
+            default: null
+        },
+        lastDonationDate:  { type: Date,    default: null },
+        totalDonations:    { type: Number,  default: 0 },
+        isDonorActive:     { type: Boolean, default: true },
+        ratings: {
+            asTutor:      { total: { type: Number, default: 0 }, count: { type: Number, default: 0 } },
+            asLearner:    { total: { type: Number, default: 0 }, count: { type: Number, default: 0 } },
+            asSkillGiver: { total: { type: Number, default: 0 }, count: { type: Number, default: 0 } },
+            asSkillTaker: { total: { type: Number, default: 0 }, count: { type: Number, default: 0 } },
+            asLFReturner: { total: { type: Number, default: 0 }, count: { type: Number, default: 0 } },
+            asLFClaimer:  { total: { type: Number, default: 0 }, count: { type: Number, default: 0 } },
+        },
+        qaContribScore:    { type: Number, default: 0 },
+        itemsReturned:     { type: Number, default: 0 },
+        sessionsCompleted: { type: Number, default: 0 },
+        communityBadges:   [{ type: String }],
+        moodLogs: [{
+            score:    { type: Number, min: 1, max: 5 },
+            note:     { type: String, default: "" },
+            loggedAt: { type: Date, default: Date.now }
+        }],
+        counselorBookings: [{
+            slotDate: Date,
+            slotTime: String,
+            status:   { type: String, enum: ["pending","confirmed","done"], default: "pending" }
+        }],
+        counselorNudgeSent: { type: Boolean, default: false },
+        counselorNudgedAt:  { type: Date, default: null },
+    },
 }, { timestamps: true });
 
 // Hash password before saving

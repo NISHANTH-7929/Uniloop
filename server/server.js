@@ -8,6 +8,7 @@ import { Server } from "socket.io";
 import app from "./src/app.js";
 import connectDB from "./src/config/db.js";
 import setupCronJobs from "./src/utils/cronJobs.js";
+import { setIO } from "./src/utils/socketUtils.js";
 
 connectDB();
 
@@ -24,9 +25,17 @@ const io = new Server(server, {
     }
 });
 
+// Expose io instance to all controllers via socketUtils
+setIO(io);
+
 // Socket.io logic
 io.on("connection", (socket) => {
     console.log(`User connected to socket: ${socket.id}`);
+
+    // Allow clients to join their personal userId room for targeted events
+    socket.on("join_user_room", (userId) => {
+        socket.join(userId);
+    });
 
     socket.on("join_conversation", (conversationId) => {
         socket.join(conversationId);

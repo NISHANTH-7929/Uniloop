@@ -92,6 +92,10 @@ const AppNavbar = () => {
                                     <span className="nav-text">Marketplace</span>
                                     <div className="nav-indicator"></div>
                                 </Link>
+                                <Link className={`nav-link ${location.pathname.startsWith('/community') ? 'active' : ''}`} to="/community">
+                                    <span className="nav-text">Community</span>
+                                    <div className="nav-indicator"></div>
+                                </Link>
 
 
                                 {user.role === 'admin' && (
@@ -134,6 +138,7 @@ const AppNavbar = () => {
                             <Link className="mobile-link" to="/dashboard">Dashboard</Link>
                             <Link className="mobile-link" to="/events">Events</Link>
                             <Link className="mobile-link" to="/marketplace">Marketplace</Link>
+                            <Link className="mobile-link" to="/community">Community</Link>
 
                             {user.role === 'admin' && (
                                 <Link className="mobile-link" to="/admin" style={{ color: "var(--accent-pink)" }}>Admin Area</Link>
