@@ -13,7 +13,7 @@ const EmergencyFeed = () => {
     }, []);
 
     return (
-        <div style={{ minHeight: "100vh", background: "var(--bg-dark)", padding: "30px 20px" }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>
             <div style={{ maxWidth: "900px", margin: "0 auto" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px", flexWrap: "wrap", gap: "12px" }}>
                     <h1 style={{ color: "#fff", margin: 0 }}>🚨 Emergency Network</h1>

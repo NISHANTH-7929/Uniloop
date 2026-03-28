@@ -22,7 +22,7 @@ const NewComplaintForm = () => {
     };
 
     return (
-        <div style={{ minHeight: "100vh", background: "var(--bg-dark)", padding: "30px 20px" }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>
             <div style={{ maxWidth: "620px", margin: "0 auto" }}>
                 <h1 style={{ color: "#fff", marginBottom: "10px" }}>📋 File Anonymous Complaint</h1>
                 <p style={{ color: "var(--text-muted)", marginBottom: "30px", fontSize: "0.9rem" }}>Your identity is never revealed. Only campus admins can track complaints internally.</p>

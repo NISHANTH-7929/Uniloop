@@ -16,7 +16,7 @@ const ComplaintDetail = () => {
     const load = async () => { try { const r = await getComplaint(id); setItem(r.data.data); } catch (_) {} };
     useEffect(() => { load(); }, [id]);
 
-    if (!item) return <div style={{ minHeight: "100vh", background: "var(--bg-dark)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Loading…</div>;
+    if (!item) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Loading…</div>;
 
     const userId = user?._id || user?.id;
     const hasVoted = item.meTooVoters?.some(v => (v?._id || v) === userId);
@@ -33,7 +33,7 @@ const ComplaintDetail = () => {
     const STATUS_COLORS = { submitted: "#00d4ff", under_review: "#ffd700", resolved: "#00ff88", dismissed: "#888" };
 
     return (
-        <div style={{ minHeight: "100vh", background: "var(--bg-dark)", padding: "30px 20px" }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>
             <div style={{ maxWidth: "700px", margin: "0 auto" }}>
                 <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "18px", padding: "30px", marginBottom: "20px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "14px" }}>

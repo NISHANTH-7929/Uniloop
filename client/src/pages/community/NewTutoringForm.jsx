@@ -28,7 +28,7 @@ const NewTutoringForm = () => {
     };
 
     return (
-        <div style={{ minHeight: "100vh", background: "var(--bg-dark)", padding: "30px 20px" }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>
             <div style={{ maxWidth: "620px", margin: "0 auto" }}>
                 <h1 style={{ color: "#fff", marginBottom: "30px" }}>🎓 Post Tutoring Session</h1>
                 <form onSubmit={handleSubmit} style={{ display: "grid", gap: "18px" }}>

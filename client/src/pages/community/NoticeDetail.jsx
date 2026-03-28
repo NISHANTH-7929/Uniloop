@@ -15,7 +15,7 @@ const NoticeDetail = () => {
         getNotice(id).then(r => setNotice(r.data.data)).catch(() => {});
     }, [id]);
 
-    if (!notice) return <div style={{ minHeight: "100vh", background: "var(--bg-dark)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Loading…</div>;
+    if (!notice) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Loading…</div>;
 
     const isAdmin  = user?.role === "admin";
     const isOwner  = notice.postedBy?._id === (user?._id || user?.id) || notice.postedBy === (user?._id || user?.id);
@@ -34,7 +34,7 @@ const NoticeDetail = () => {
     const daysLeft = Math.max(0, Math.floor((new Date(notice.expiresAt) - Date.now()) / (1000 * 60 * 60 * 24)));
 
     return (
-        <div style={{ minHeight: "100vh", background: "var(--bg-dark)", padding: "30px 20px" }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>
             <div style={{ maxWidth: "700px", margin: "0 auto" }}>
                 <div style={{ background: notice.pinned ? "rgba(112,0,255,0.07)" : "rgba(255,255,255,0.04)", border: `1px solid ${notice.pinned ? "rgba(112,0,255,0.35)" : "rgba(255,255,255,0.08)"}`, borderRadius: "18px", padding: "30px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "14px" }}>

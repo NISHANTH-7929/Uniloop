@@ -99,19 +99,23 @@ export const claimItem = async (req, res) => {
         const item = await LostFoundItem.findById(req.params.id).populate("reporter", "email");
         if (!item) return res.status(404).json({ success: false, message: "Item not found" });
         if (item.status !== "active") return res.status(400).json({ success: false, message: "Item is not claimable" });
+        if (item.type !== "found") return res.status(400).json({ success: false, message: "Only 'found' items can be claimed" });
 
         const userId = req.user._id.toString();
-        if (!item.isAnonymous && item.reporter?._id.toString() === userId) {
+        const reporterId = item.reporter?._id?.toString() || item.reporter?.toString();
+        if (!item.isAnonymous && reporterId === userId) {
             return res.status(400).json({ success: false, message: "You cannot claim your own item" });
         }
 
-        const { answer } = req.body;
-        if (!item.claimVerification?.answerHash) {
-            return res.status(400).json({ success: false, message: "This item has no claim verification set" });
+        // If item has a claim verification question, validate the answer
+        if (item.claimVerification?.answerHash) {
+            const { answer } = req.body;
+            if (!answer) {
+                return res.status(400).json({ success: false, message: "Please provide the answer to claim this item" });
+            }
+            const match = await bcrypt.compare(answer, item.claimVerification.answerHash);
+            if (!match) return res.status(400).json({ success: false, message: "Incorrect answer — only the true owner would know" });
         }
-
-        const match = await bcrypt.compare(answer, item.claimVerification.answerHash);
-        if (!match) return res.status(400).json({ success: false, message: "Incorrect answer" });
 
         item.claimVerification.claimedBy = req.user._id;
         await item.save();
@@ -119,7 +123,8 @@ export const claimItem = async (req, res) => {
         // Notify finder via socket
         if (item.reporter && !item.isAnonymous) {
             try {
-                getIO().to(item.reporter._id.toString()).emit("lostfound:claimRequest", {
+                const reporterIdStr = item.reporter._id?.toString() || item.reporter.toString();
+                getIO().to(reporterIdStr).emit("lostfound:claimRequest", {
                     itemId:       item._id,
                     claimerName:  req.user.email.split("@")[0],
                     claimerId:    req.user._id,

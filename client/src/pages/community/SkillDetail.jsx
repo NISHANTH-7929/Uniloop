@@ -18,7 +18,7 @@ const SkillDetail = () => {
     const loadReview = async () => { try { const r = await getSkillReview(id); setReview(r.data); } catch (_) {} };
     useEffect(() => { load(); loadReview(); }, [id]);
 
-    if (!skill) return <div style={{ minHeight: "100vh", background: "var(--bg-dark)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Loading…</div>;
+    if (!skill) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Loading…</div>;
 
     const userId   = user?._id || user?.id;
     const posterId = skill.poster?._id || skill.poster;
@@ -28,7 +28,7 @@ const SkillDetail = () => {
     const action = async (fn, msg) => { try { await fn(); toast.success(msg); load(); } catch (err) { toast.error(err.response?.data?.message || "Failed"); } };
 
     return (
-        <div style={{ minHeight: "100vh", background: "var(--bg-dark)", padding: "30px 20px" }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>
             <div style={{ maxWidth: "700px", margin: "0 auto" }}>
                 <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,165,0,0.2)", borderRadius: "18px", padding: "30px", marginBottom: "20px" }}>
                     <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>

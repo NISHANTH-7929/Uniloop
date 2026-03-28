@@ -12,11 +12,11 @@ const CommunityProfile = () => {
         getCommunityProfile(userId).then(r => setProfile(r.data.data)).catch(() => {}).finally(() => setLoading(false));
     }, [userId]);
 
-    if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg-dark)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Loading…</div>;
+    if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Loading…</div>;
     if (!profile) return <div style={{ padding: "40px", color: "var(--text-muted)" }}>Profile not found.</div>;
 
     return (
-        <div style={{ minHeight: "100vh", background: "var(--bg-dark)", padding: "30px 20px" }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>
             <div style={{ maxWidth: "700px", margin: "0 auto" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "20px", marginBottom: "30px" }}>
                     <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "linear-gradient(135deg, #7000ff, #00d4ff)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem" }}>

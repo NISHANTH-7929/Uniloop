@@ -3,6 +3,7 @@
 :root {
   /* Cosmic / Neon Theme Colors */
   --bg-primary: #050914;
+  --bg-dark: #050914;
   /* Deep Space Dark */
   --bg-secondary: #0a1128;
   --bg-glass: rgba(20, 25, 40, 0.4);
@@ -21,6 +22,9 @@
   --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   --shadow-neon: 0 0 15px rgba(0, 212, 255, 0.4), 0 0 30px rgba(112, 0, 255, 0.2);
 
+  /* Navbar height offset for fixed navbar */
+  --navbar-height: 90px;
+
   /* Typography */
   --font-main: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Outfit', 'Inter', sans-serif;
@@ -28,6 +32,43 @@
   /* Transitions */
   --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-smooth: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Community page base layout — compensates for fixed navbar */
+.community-page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  padding: var(--navbar-height) 20px 40px;
+}
+
+.community-container {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* Form input standard */
+.community-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-family: var(--font-main);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.community-input:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 3px rgba(0,212,255,0.12);
+}
+
+.community-input option {
+  background: #0a1128;
+  color: #fff;
 }
 
 /* Base Styles */

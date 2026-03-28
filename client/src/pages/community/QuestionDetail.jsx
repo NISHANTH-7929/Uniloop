@@ -15,7 +15,7 @@ const QuestionDetail = () => {
     const load = async () => { try { const r = await getQAQuestion(id); setPost(r.data.data); } catch (_) {} };
     useEffect(() => { load(); }, [id]);
 
-    if (!post) return <div style={{ minHeight: "100vh", background: "var(--bg-dark)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Loading…</div>;
+    if (!post) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Loading…</div>;
 
     const userId = user?._id || user?.id;
     const isAuthor = post.author?._id === userId || post.author === userId;
@@ -36,7 +36,7 @@ const QuestionDetail = () => {
     };
 
     return (
-        <div style={{ minHeight: "100vh", background: "var(--bg-dark)", padding: "30px 20px" }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>
             <div style={{ maxWidth: "800px", margin: "0 auto" }}>
                 {/* Question */}
                 <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "18px", padding: "30px", marginBottom: "28px" }}>

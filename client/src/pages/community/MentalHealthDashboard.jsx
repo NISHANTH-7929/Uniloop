@@ -33,7 +33,7 @@ const MentalHealthDashboard = () => {
     };
 
     return (
-        <div style={{ minHeight: "100vh", background: "var(--bg-dark)", padding: "30px 20px" }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>
             <div style={{ maxWidth: "800px", margin: "0 auto" }}>
                 <h1 style={{ color: "#fff", marginBottom: "6px" }}>💚 Mental Health</h1>
                 <p style={{ color: "var(--text-muted)", marginBottom: "30px", fontSize: "0.9rem" }}>This is a private space. Your data is only visible to you.</p>

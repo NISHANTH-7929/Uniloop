@@ -17,7 +17,7 @@ const EmergencyDetail = () => {
     };
     useEffect(() => { load(); }, [id]);
 
-    if (!item) return <div style={{ minHeight: "100vh", background: "var(--bg-dark)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Loading…</div>;
+    if (!item) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Loading…</div>;
 
     const userId  = user?._id || user?.id;
     const isOwner = item.poster?._id === userId || item.poster === userId;
@@ -35,7 +35,7 @@ const EmergencyDetail = () => {
     };
 
     return (
-        <div style={{ minHeight: "100vh", background: "var(--bg-dark)", padding: "30px 20px" }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>
             <div style={{ maxWidth: "700px", margin: "0 auto" }}>
                 <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,68,68,0.2)", borderRadius: "18px", padding: "30px", marginBottom: "24px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
