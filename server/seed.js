@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = "mongodb+srv://nishanth7929:Viratkohli%4018@cluster0.aiznjd6.mongodb.net/uniloop"; // From .env
+import dotenv from "dotenv";
+dotenv.config();
+const MONGODB_URI = process.env.MONGO_URI;
 
 const categorySchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true },

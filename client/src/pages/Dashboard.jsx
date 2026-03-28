@@ -19,7 +19,7 @@ const Dashboard = () => {
     const [tickets, setTickets] = useState([]);
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState("pending"); // pending, active_borrows, past
+    const [activeTab, setActiveTab] = useState("pending");
 
     // Review Modal State
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -32,12 +32,12 @@ const Dashboard = () => {
                     fetchTrades().catch(() => ({ data: [] })),
                     fetchBorrows().catch(() => ({ data: [] })),
                     getMyTickets().catch(() => ({ data: [] })),
-                    getNotifications().catch(() => ({ data: [] }))
+                    getNotifications().catch(() => ({ data: { notifications: [] } }))
                 ]);
                 setTrades(tradesRes.data);
                 setBorrows(borrowsRes.data);
                 setTickets(ticketsRes.data);
-                setNotifications(notifsRes.data);
+                setNotifications(notifsRes.data.notifications || notifsRes.data || []);
             } catch (error) {
                 console.error("Dashboard data error", error);
                 toast.error("Failed to load dashboard data");
@@ -186,10 +186,17 @@ const Dashboard = () => {
                 </div>
             </motion.div>
 
-            {/* Notifications Shortcut */}
-            <div style={{ marginBottom: "20px", display: 'flex', justifyContent: 'flex-end' }}>
-                <a href="/notifications" style={{ color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-                    View All Notifications
+            {/* Top Action Bar */}
+            <div style={{ marginBottom: "20px", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <button 
+                    className="btn-neon primary" 
+                    onClick={() => navigate('/my-tickets')}
+                    style={{ padding: '8px 20px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                    View My Tickets
+                </button>
+                <a href="/notifications" style={{ color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', fontWeight: 'bold' }}>
+                    Notifications
                     {notifications.filter(n => !n.isRead).length > 0 && (
                         <span style={{ width: 10, height: 10, borderRadius: 6, background: 'var(--accent-pink)' }} />
                     )}
@@ -247,7 +254,8 @@ const Dashboard = () => {
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px" }}>
                         {tickets.map(ticket => (
                             <div key={ticket._id} style={{ border: "1px solid var(--border-glass)", borderRadius: "12px", padding: "20px", background: "rgba(255,255,255,0.05)", textAlign: "center", position: "relative" }}>
-                                <h4 style={{ color: "var(--accent-cyan)", marginBottom: "5px" }}>{ticket.event?.title}</h4>
+                                <h4 style={{ color: "var(--accent-cyan)", marginBottom: "2px", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "1px", opacity: 0.8 }}>{ticket.event?.title}</h4>
+                                <h3 style={{ color: "#fff", margin: "5px 0 15px", fontSize: "1.3rem" }}>{ticket.subevent?.title || 'Main Event'}</h3>
                                 <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "20px" }}>
                                     Status: <strong style={{ color: ticket.status === 'ACTIVE' ? '#28a745' : (ticket.status === 'USED' ? '#ffc107' : '#dc3545') }}>{ticket.status}</strong>
                                 </p>

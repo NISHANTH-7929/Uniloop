@@ -8,22 +8,9 @@ import jwt from "jsonwebtoken";
 // @access  Private
 export const registerForEvent = async (req, res) => {
     try {
-        // Debug logging: capture incoming request info to aid troubleshooting
-        try {
-            console.log("[Register] Incoming registration request:", {
-                eventId: req.params.eventId,
-                userId: req.user && req.user._id,
-                bodyType: typeof req.body,
-                bodyKeys: Object.keys(req.body || {}),
-                personsSample: Array.isArray(req.body.persons) ? req.body.persons.slice(0, 3) : req.body.persons,
-                jwtSecretPresent: !!process.env.JWT_SECRET
-            });
-        } catch (logErr) {
-            console.warn("[Register] Failed to log request details:", logErr);
-        }
         const { eventId } = req.params;
         const userId = req.user._id;
-        const { persons, alias, subeventId, ticketCategory } = req.body; // Array of { name, age }, alias, subeventId, and optionally ticketCategory
+        const { persons, alias, subeventId, ticketCategory } = req.body;
 
         if (!subeventId) {
             return res.status(400).json({ message: "A subevent must be selected to book a ticket" });
@@ -54,10 +41,7 @@ export const registerForEvent = async (req, res) => {
         const event = await Event.findById(eventId).populate('organizer', 'email');
         if (!event) return res.status(404).json({ message: "Event not found" });
 
-        const organizerId = event.organizer?._id || event.organizer;
-        if (organizerId.toString() === userId.toString()) {
-            return res.status(400).json({ message: "Organizers cannot book tickets for their own events" });
-        }
+
 
         const subevent = event.subevents.id(subeventId);
         if (!subevent) {
@@ -111,13 +95,63 @@ export const getMyTickets = async (req, res) => {
             .populate('event', 'title date location image subevents')
             .sort({ alias: 1 }); // Alpha order by alias as requested
 
-        // Map over tickets to attach a freshly signed qr_token
-        const ticketsWithToken = tickets.map(ticket => {
-            const qr_token = jwt.sign({ ticketId: ticket._id }, process.env.JWT_SECRET);
-            return { ...ticket.toObject(), qr_token };
+        const now = new Date();
+        const ticketsToDelete = [];
+        const validTickets = [];
+
+        // Map over tickets to attach a freshly signed qr_token and clean up subevents
+        tickets.forEach(ticket => {
+            const ticketObj = ticket.toObject();
+            let isValid = true;
+            let activeSubevent = null;
+
+            // 1. Check if reference exists
+            if (!ticketObj.event) {
+                isValid = false;
+            } else if (ticketObj.event.subevents) {
+                const subeventIdStr = ticketObj.subevent ? ticketObj.subevent.toString() : null;
+                activeSubevent = ticketObj.event.subevents.find(s => s._id.toString() === subeventIdStr);
+                
+                if (!activeSubevent) {
+                    isValid = false; // Orphaned subevent
+                }
+            }
+
+            // 2. Check if already USED
+            if (ticketObj.status === "USED") {
+                isValid = false;
+            }
+
+            // 3. Check if end date is in the past
+            if (isValid) {
+                const targetDate = new Date(activeSubevent?.endDate || ticketObj.event.endDate);
+                if (targetDate < now) {
+                    isValid = false;
+                }
+            }
+
+            if (isValid) {
+                if (activeSubevent) {
+                    ticketObj.subevent = activeSubevent;
+                }
+                if (ticketObj.event) {
+                    delete ticketObj.event.subevents;
+                }
+                
+                const qr_token = jwt.sign({ ticketId: ticketObj._id }, process.env.JWT_SECRET);
+                validTickets.push({ ...ticketObj, qr_token });
+            } else {
+                ticketsToDelete.push(ticket._id);
+            }
         });
 
-        res.json(ticketsWithToken);
+        // Auto-cleanup: silently delete irrelevant/consumed tickets from the database
+        if (ticketsToDelete.length > 0) {
+            Ticket.deleteMany({ _id: { $in: ticketsToDelete } })
+                .catch(err => console.error("Auto-cleanup background error:", err));
+        }
+
+        res.json(validTickets);
     } catch (error) {
         res.status(500).json({ message: "Error fetching tickets" });
     }
@@ -162,12 +196,13 @@ export const verifyTicketQR = async (req, res) => {
         try {
             const decoded = jwt.verify(qr_token, process.env.JWT_SECRET);
             if (decoded.ticketId) {
-                const ticket = await Ticket.findById(decoded.ticketId).populate('event').populate('user', 'email');
+                const ticket = await Ticket.findById(decoded.ticketId).populate('event').populate('user', 'email name');
                 if (!ticket) return res.status(404).json({ message: "Ticket not found" });
                 if (ticket.status !== 'ACTIVE') {
                     return res.status(400).json({ message: `Ticket is ${ticket.status}` });
                 }
-                return res.json({ ticket });
+                const subevent = ticket.event.subevents.id(ticket.subevent);
+                return res.json({ ticket, subevent });
             }
         } catch (err) {
             // not a valid JWT for ticket — fall through to try matching subevent qr_secret
@@ -220,7 +255,20 @@ export const checkinTicket = async (req, res) => {
 
         // 3. Verify scanner authorization
         const isOrganizer = rawTicket.event.organizer.toString() === scannerId.toString();
-        const isVolunteer = rawTicket.event.volunteers.includes(scannerId);
+        
+        const volunteerRecord = rawTicket.event.volunteers.find(v => v.user.toString() === scannerId.toString());
+        let isVolunteer = false;
+        
+        if (volunteerRecord) {
+            if (volunteerRecord.assignedTo === 'grand') {
+                isVolunteer = true; // Grand volunteers can scan anything
+            } else if (volunteerRecord.assignedTo === 'subevent' && rawTicket.subevent) {
+                // Subevent volunteers can exclusively scan their specific subevent
+                if (volunteerRecord.subeventId && volunteerRecord.subeventId.toString() === rawTicket.subevent.toString()) {
+                    isVolunteer = true;
+                }
+            }
+        }
 
         if (!isOrganizer && !isVolunteer && req.user.role !== 'admin') {
             return res.status(403).json({ success: false, status: 'invalid', message: "Not authorized to scan for this event" });
@@ -276,7 +324,7 @@ export const getEventStats = async (req, res) => {
 
         // Allow organizer, admin, or assigned volunteers to view stats
         const isOrganizer = event.organizer.toString() === req.user._id.toString();
-        const isVolunteer = event.volunteers && event.volunteers.some(v => v.toString() === req.user._id.toString());
+        const isVolunteer = event.volunteers && event.volunteers.some(v => v.user.toString() === req.user._id.toString());
         if (!isOrganizer && !isVolunteer && req.user.role !== 'admin') {
             return res.status(403).json({ message: "Not authorized" });
         }
@@ -341,7 +389,14 @@ export const getVolunteerStats = async (req, res) => {
             };
         });
 
-        res.json({ event: { _id: event._id, title: event.title, organizer: event.organizer, date: event.date }, volunteerId, personsCheckedIn, details });
+        const vRecord = event.volunteers.find(v => v.user.toString() === volunteerId.toString());
+        let scopeTitle = "Grand Event (All Access)";
+        if (vRecord && vRecord.assignedTo === 'subevent') {
+            const subRef = event.subevents.id(vRecord.subeventId);
+            scopeTitle = subRef ? subRef.title : "Deleted Subevent";
+        }
+
+        res.json({ event: { _id: event._id, title: event.title, organizer: event.organizer, date: event.date }, volunteerId, personsCheckedIn, details, scopeTitle });
     } catch (error) {
         console.error("getVolunteerStats error:", error);
         res.status(500).json({ message: "Server error fetching volunteer stats" });

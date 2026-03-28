@@ -1,57 +1,44 @@
 import axios from "axios";
 
 // Create Axios instance – use relative path so the Vite dev proxy forwards to the backend
-const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_URI || "";
+const API_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_URI || "http://localhost:5000";
 const api = axios.create({
     baseURL: API_BASE.startsWith('http') ? `${API_BASE}/api/auth` : '/api/auth',
     withCredentials: true, // Important for cookies (refresh token)
 });
 
-// Request interceptor to add Access Token to headers
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem("accessToken");
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
+        const token = localStorage.getItem('accessToken');
+        if (token) config.headers.Authorization = `Bearer ${token}`;
         return config;
     },
     (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle token refresh
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
 
-        // If 401 Unauthorized and not already retried
         if (error.response.status === 401 && !originalRequest._retry) {
-            // Do not attempt silent refresh for auth endpoints themselves.
-            // Let callers handle auth-related errors like "Please verify your email first".
-            const authEndpoints = ["/login", "/register", "/refresh", "/verify"];
-            const reqUrl = originalRequest.url || "";
+            // Skip silent refresh for auth endpoints themselves to avoid infinite loops
+            const authEndpoints = ['/login', '/register', '/refresh', '/verify'];
+            const reqUrl = originalRequest.url || '';
             if (authEndpoints.some(ep => reqUrl.includes(ep))) {
                 return Promise.reject(error);
             }
 
             originalRequest._retry = true;
-
             try {
-                // Attempt to refresh token
-                const res = await api.post("/refresh");
+                const res = await api.post('/refresh');
                 const { accessToken } = res.data;
-
-                // Save new token
-                localStorage.setItem("accessToken", accessToken);
-
-                // Update header and retry original request
+                localStorage.setItem('accessToken', accessToken);
                 originalRequest.headers.Authorization = `Bearer ${accessToken}`;
                 return api(originalRequest);
             } catch (err) {
-                // If refresh fails, redirect to login
-                localStorage.removeItem("accessToken");
-                window.location.href = "/login";
+                localStorage.removeItem('accessToken');
+                window.location.href = '/login';
                 return Promise.reject(err);
             }
         }

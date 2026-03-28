@@ -11,6 +11,7 @@ const Scanner = () => {
     const [eventDetails, setEventDetails] = useState(null);
     const [scannedTicket, setScannedTicket] = useState(null); // The raw QR token
     const [ticketData, setTicketData] = useState(null); // Decoded details
+    const [ticketSubevent, setTicketSubevent] = useState(null); // Subevent context
     const [scanResult, setScanResult] = useState(null); // { success, message, user }
     const [isScanning, setIsScanning] = useState(true);
 
@@ -47,6 +48,7 @@ const Scanner = () => {
         setIsScanning(true);
         setScannedTicket(null);
         setTicketData(null);
+        setTicketSubevent(null);
         setScanResult(null);
 
         // Ensure element exists before rendering
@@ -75,7 +77,8 @@ const Scanner = () => {
 
         try {
             const { data } = await verifyTicketQR(decodedText);
-            setTicketData(data.ticket);
+            setTicketData(data.ticket || data.event); // Fallback for pure subevents if any
+            setTicketSubevent(data.subevent);
         } catch (error) {
             setScanResult({
                 success: false,
@@ -133,6 +136,12 @@ const Scanner = () => {
                     <h2 style={{ color: "var(--accent-cyan)", marginBottom: "20px", textAlign: "center" }}>Verify Ticket</h2>
 
                     <div style={{ background: "rgba(0,0,0,0.3)", padding: "20px", borderRadius: "10px", marginBottom: "20px" }}>
+                        {ticketSubevent && (
+                            <div style={{ background: "rgba(0, 212, 255, 0.1)", border: "1px solid var(--accent-cyan)", padding: "10px", borderRadius: "8px", marginBottom: "15px", textAlign: "center" }}>
+                                <h4 style={{ color: "var(--accent-cyan)", margin: 0 }}>Ticket is specifically for:</h4>
+                                <h3 style={{ color: "#fff", margin: "5px 0 0" }}>{ticketSubevent.title}</h3>
+                            </div>
+                        )}
                         <p style={{ margin: "0 0 10px", fontSize: "1.1rem", color: "var(--text-primary)" }}>
                             <strong>Purchased by:</strong> {ticketData.user?.email}
                         </p>

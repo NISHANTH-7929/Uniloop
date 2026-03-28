@@ -53,12 +53,14 @@ const eventSchema = new mongoose.Schema({
         ref: 'User'
     }],
     volunteers: [{
-        type: mongoose.Schema.ObjectId,
-        ref: 'User'
+        user: { type: mongoose.Schema.ObjectId, ref: 'User', required: true },
+        assignedTo: { type: String, enum: ['grand', 'subevent'], default: 'grand' },
+        subeventId: { type: mongoose.Schema.Types.ObjectId }
     }],
     subevents: [{
         title: String,
         description: String,
+        creator: { type: mongoose.Schema.ObjectId, ref: 'User' },
         date: Date,
         endDate: Date,
         location: {

@@ -6,6 +6,72 @@ import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import Loader from '../components/Loader';
 
+const UpdateCard = ({ update }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    
+    const MAX_LENGTH = 150;
+    const textStr = update.text || "";
+    // It's considered long if text exceeds limit OR if there are attachments
+    const isLong = textStr.length > MAX_LENGTH || (update.attachments && update.attachments.length > 0);
+    
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}
+            style={{ background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-glass)', overflow: 'hidden' }}
+            layout
+        >
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <motion.h4 layout="position" style={{ margin: 0, color: 'var(--accent-cyan)' }}>
+                    {update.title}
+                </motion.h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(update.createdAt).toLocaleDateString()}</span>
+                    {isLong && (
+                        <button 
+                            type="button"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            style={{ background: 'rgba(255,100,200,0.1)', border: '1px solid var(--accent-pink)', color: 'var(--accent-pink)', fontSize: '0.75rem', padding: '4px 10px', borderRadius: '12px', cursor: 'pointer', outline: 'none' }}
+                        >
+                            {isExpanded ? "Collapse" : "View More"}
+                        </button>
+                    )}
+                </div>
+            </div>
+            
+            <motion.div layout="position">
+                <p style={{ margin: 0, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                    {isExpanded ? textStr : (textStr.length > MAX_LENGTH ? textStr.substring(0, MAX_LENGTH) + "..." : textStr)}
+                </p>
+            </motion.div>
+
+            <AnimatePresence>
+                {isExpanded && update.attachments && update.attachments.length > 0 && (
+                    <motion.div 
+                        initial={{ opacity: 0, height: 0, marginTop: 0 }} 
+                        animate={{ opacity: 1, height: 'auto', marginTop: '15px' }} 
+                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}
+                    >
+                        {update.attachments.map((a, i) => (
+                            <div key={i} className="media-container" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+                                {a.mime?.startsWith('video') ? (
+                                    <video controls src={a.data || a.url} style={{ width: '100%', borderRadius: '8px', boxShadow: 'var(--shadow-neon)' }} />
+                                ) : a.mime?.startsWith('image') ? (
+                                    <img src={a.data || a.url} alt={a.filename} style={{ width: '100%', borderRadius: '8px' }} />
+                                ) : (
+                                    <a href={a.data || a.url} download={a.filename} className="btn-neon w-100" style={{ fontSize: '0.85rem', padding: '10px' }}>
+                                        File: {a.filename}
+                                    </a>
+                                )}
+                            </div>
+                        ))}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
+    );
+};
+
 const SubeventDetails = () => {
     const { id, subeventId } = useParams();
     const navigate = useNavigate();
@@ -33,7 +99,7 @@ const SubeventDetails = () => {
     const [showUpdateForm, setShowUpdateForm] = useState(false);
     const [showEditForm, setShowEditForm] = useState(false);
     const [updateForm, setUpdateForm] = useState({ title: '', text: '', attachments: [] });
-    const [editForm, setEditForm] = useState({ title: '', description: '', date: '', endDate: '', locationName: '', promoLink: '', imageFile: null, imageUrl: '', additionalMediaFiles: [] });
+    const [editForm, setEditForm] = useState({ title: '', description: '', date: '', endDate: '', locationName: '', promoLink: '' });
 
     const LOCATION_OPTIONS = [
         "Tag Audi", "Vivekananda Audi", "Ground", "CEG Square", "CSE Department",
@@ -107,10 +173,7 @@ const SubeventDetails = () => {
             date: toLocalISOString(event.date),
             endDate: event.endDate ? toLocalISOString(event.endDate) : '',
             locationName: event.location?.name || LOCATION_OPTIONS[0],
-            promoLink: event.promoLink || '',
-            imageFile: null,
-            imageUrl: event.image || '',
-            additionalMediaFiles: []
+            promoLink: event.promoLink || ''
         });
         setShowEditForm(true);
     };
@@ -126,27 +189,6 @@ const SubeventDetails = () => {
                 location: { name: editForm.locationName },
                 promoLink: editForm.promoLink
             };
-            if (editForm.imageFile) {
-                const b64 = await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(editForm.imageFile);
-                    reader.onload = () => resolve(reader.result);
-                });
-                payload.image = b64;
-            } else if (editForm.imageUrl) {
-                payload.image = editForm.imageUrl;
-            }
-            if (editForm.additionalMediaFiles.length > 0) {
-                payload.additionalMedia = [];
-                for (const f of editForm.additionalMediaFiles) {
-                    const b64 = await new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.readAsDataURL(f);
-                        reader.onload = () => resolve({ filename: f.name, mime: f.type, data: reader.result });
-                    });
-                    payload.additionalMedia.push(b64);
-                }
-            }
             await updateSubevent(id, subeventId, payload);
             toast.success("Subevent Updated Successfully");
             setShowEditForm(false);
@@ -205,10 +247,18 @@ const SubeventDetails = () => {
 
     const isMainOrganizer = user && grandEvent.organizer && (grandEvent.organizer._id === user._id || grandEvent.organizer === user._id);
     const isPartOrganizer = user && grandEvent.partOrganizers && grandEvent.partOrganizers.some(o => o._id === user._id || o === user._id);
-    // Subevent management is restricted to the part-organizer only (not even main organizer)
-    const isSubeventOrganizer = isPartOrganizer;
+
+    // Subevent management is rigidly restricted to the subevent creator.
+    // If it's a legacy subevent with no creator field, fallback to main organizer to prevent locking out.
+    const isSubeventOrganizer = user && event.creator
+        ? (event.creator === user._id || event.creator._id === user._id)
+        : isMainOrganizer;
+
     const isOrganizer = user && (user.role === 'admin' || isMainOrganizer);
-    const isVolunteer = user && grandEvent.volunteers && grandEvent.volunteers.some(v => v._id === user._id || v === user._id);
+    const isVolunteer = user && grandEvent.volunteers && grandEvent.volunteers.some(v => 
+        (v.user?._id === user._id || v.user === user._id) && 
+        (v.assignedTo === 'grand' || (v.assignedTo === 'subevent' && v.subeventId && v.subeventId.toString() === event._id.toString()))
+    );
     const isActive = new Date() <= new Date(event.endDate || new Date(event.date).getTime() + 24 * 60 * 60 * 1000);
 
     return (
@@ -242,7 +292,7 @@ const SubeventDetails = () => {
                                 </span>
                             )}
                             <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                📍 {event.location?.name || "Venue TBD"}
+                                {event.location?.name || "Venue TBD"}
                             </span>
                             <span style={{
                                 padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold',
@@ -376,16 +426,6 @@ const SubeventDetails = () => {
                                             <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Promotional Link / Trailer</label>
                                             <input type="url" className="form-control bg-dark text-white border-secondary" placeholder="https://youtube.com/..." value={editForm.promoLink} onChange={e => setEditForm({ ...editForm, promoLink: e.target.value })} />
                                         </div>
-                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-                                            <div>
-                                                <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Change Main Photo</label>
-                                                <input type="file" accept="image/*" className="form-control bg-dark text-white border-secondary" onChange={e => setEditForm({ ...editForm, imageFile: e.target.files[0] })} />
-                                            </div>
-                                            <div>
-                                                <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Add New Media (Photos, Videos, PDFs)</label>
-                                                <input type="file" multiple accept="image/*,video/*,.pdf" className="form-control bg-dark text-white border-secondary" onChange={e => setEditForm({ ...editForm, additionalMediaFiles: Array.from(e.target.files) })} />
-                                            </div>
-                                        </div>
                                         <button className="btn-neon primary" type="submit">Save Changes</button>
                                     </motion.form>
                                 )}
@@ -425,36 +465,9 @@ const SubeventDetails = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             {event.updates && event.updates.length > 0 ? (
                                 event.updates.map((u, idx) => (
-                                    <motion.div
-                                        key={idx}
-                                        initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }}
-                                        style={{ background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-glass)' }}
-                                    >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                            <h4 style={{ margin: 0, color: 'var(--accent-cyan)' }}>{u.title}</h4>
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(u.createdAt).toLocaleDateString()}</span>
-                                        </div>
-                                        <p style={{ marginBottom: u.attachments?.length > 0 ? '15px' : 0 }}>{u.text}</p>
-                                        {u.attachments && u.attachments.length > 0 && (
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-                                                {u.attachments.map((a, i) => (
-                                                    <div key={i} className="media-container">
-                                                        {a.mime?.startsWith('video') ? (
-                                                            <video controls src={a.data || a.url} style={{ width: '100%', borderRadius: '8px', boxShadow: 'var(--shadow-neon)' }} />
-                                                        ) : a.mime?.startsWith('image') ? (
-                                                            <img src={a.data || a.url} alt={a.filename} style={{ width: '100%', borderRadius: '8px' }} />
-                                                        ) : (
-                                                            <a href={a.data || a.url} download={a.filename} className="btn-neon" style={{ width: '100%', fontSize: '0.85rem' }}>
-                                                                File: {a.filename}
-                                                            </a>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </motion.div>
+                                    <UpdateCard key={idx} update={u} />
                                 ))
-                            ) : (<p style={{ textAlign: 'center', padding: '20px' }}>No updates yet. Stay tuned!</p>)}
+                            ) : (<p style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>No updates yet. Stay tuned!</p>)}
                         </div>
                     </div>
 
@@ -468,14 +481,6 @@ const SubeventDetails = () => {
                         <div style={{ marginBottom: '25px' }}>
                             <h4 style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '15px' }}>Quick Actions</h4>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {/* VIEW MY TICKETS — scoped to this subevent */}
-                                <button
-                                    className="btn-neon w-100"
-                                    style={{ padding: '15px' }}
-                                    onClick={() => navigate(`/view-tickets?subeventId=${subeventId}&eventId=${id}`)}
-                                >
-                                    VIEW MY TICKETS
-                                </button>
 
                                 {/* DUTY HUB for volunteers */}
                                 {isVolunteer && (
@@ -575,7 +580,7 @@ const SubeventDetails = () => {
                                         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '5px 0' }}>
                                             <input type="checkbox" checked={volunteerAcknowledge} onChange={e => setVolunteerAcknowledge(e.target.checked)} style={{ width: 18, height: 18, marginTop: 3 }} />
                                             <span style={{ color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>
-                                                I acknowledge that as a volunteer for this event, I am participating in an official capacity and cannot be a participant myself. I have not included my own name in this attendee list.
+                                                I acknowledge that as a volunteer for this event or subevent, I am participating in an official capacity and cannot be a participant myself. I have not included my own name in this attendee list.
                                             </span>
                                         </label>
                                     )}
