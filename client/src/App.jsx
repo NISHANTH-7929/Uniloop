@@ -19,6 +19,7 @@ import Notifications from "./pages/Notifications";
 import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
+import DormDashRoutes from "./pages/dormdash/DormDashRoutes";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -53,6 +54,7 @@ function App() {
           <Route path="/organizer" element={<Organizer />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/dormdash/*" element={<DormDashRoutes />} />
         </Route>
 
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

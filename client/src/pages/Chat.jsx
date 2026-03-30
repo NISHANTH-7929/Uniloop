@@ -1,54 +1,127 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { fetchConversations, fetchMessages, sendMessageFallback } from "../api/chatApi";
-import { io } from "socket.io-client";
 import { motion } from "framer-motion";
 import { Send, AlertTriangle, ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
 import { format } from "date-fns";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { useSocket } from "../context/SocketContext";
+
 const Chat = () => {
     const { user } = useAuth();
+    const { socket, connected } = useSocket();
     const location = useLocation();
     const navigate = useNavigate();
     const [conversations, setConversations] = useState([]);
     const [activeConvo, setActiveConvo] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
-    const [socket, setSocket] = useState(null);
+    const [nextCursor, setNextCursor] = useState(null);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [typingUsers, setTypingUsers] = useState({}); // { [convoId]: [user1, user2] }
     const messagesEndRef = useRef(null);
-    const [targetTradeId, setTargetTradeId] = useState(location.state?.tradeId || null);
+    const scrollContainerRef = useRef(null);
+    const activeConvoRef = useRef(activeConvo);
+    const [targetConversationId, setTargetConversationId] = useState(location.state?.conversationId || null);
+    const [targetThreadType, setTargetThreadType] = useState(location.state?.threadType || null);
 
-    // Initial setup
+    // Initial load
     useEffect(() => {
-        const API_BASE = import.meta.env.VITE_API_URI || "http://localhost:5000";
-        const newSocket = io(API_BASE); // Adjust for prod
-        setSocket(newSocket);
-
         loadConversations();
-
-        return () => newSocket.close();
     }, []);
+
+    useEffect(() => {
+        activeConvoRef.current = activeConvo;
+    }, [activeConvo]);
+
+    // Listen for incoming messages
+    useEffect(() => {
+        if (!socket || !connected) return;
+
+        const handleReceiveMessage = (data) => {
+            console.log("Chat message received:", data);
+            const currentConvoId = activeConvoRef.current?._id;
+            console.log("Current activeConvoId:", currentConvoId);
+
+            if (currentConvoId && String(data.conversationId) === String(currentConvoId)) {
+                console.log("Appending message...");
+                setMessages(prev => [...prev, data.messageData]);
+            } else {
+                setConversations(prev => prev.map(c => 
+                    String(c._id) === String(data.conversationId) 
+                        ? { ...c, unreadCount: (c.unreadCount || 0) + 1, lastMessage: data.messageData } 
+                        : c
+                ));
+            }
+        };
+
+        const handleTypingStart = ({ conversationId, userId }) => {
+            if (userId === user._id) return;
+            setTypingUsers(prev => ({
+                ...prev,
+                [conversationId]: [...(new Set([...(prev[conversationId] || []), userId]))]
+            }));
+        };
+
+        const handleTypingEnd = ({ conversationId }) => {
+            setTypingUsers(prev => {
+                const newState = { ...prev };
+                delete newState[conversationId];
+                return newState;
+            });
+        };
+
+        const handleRefreshConversations = () => loadConversations();
+
+        const handleNewConversation = (newConvo) => {
+            console.log("[Chat] New conversation received:", newConvo._id);
+            setConversations(prev => {
+                if (prev.some(c => c._id === newConvo._id)) return prev;
+                return [newConvo, ...prev];
+            });
+        };
+
+        socket.on("receive_message", handleReceiveMessage);
+        socket.on("conversation:new", handleNewConversation);
+        socket.on("typing_start", handleTypingStart);
+        socket.on("typing_end", handleTypingEnd);
+        socket.on("order:confirmed", handleRefreshConversations);
+
+        return () => {
+            socket.off("receive_message", handleReceiveMessage);
+            socket.off("conversation:new", handleNewConversation);
+            socket.off("typing_start", handleTypingStart);
+            socket.off("typing_end", handleTypingEnd);
+            socket.off("order:confirmed", handleRefreshConversations);
+        };
+    }, [socket, connected]);
+
+    // Join room when activeConvo changes
+    useEffect(() => {
+        if (connected && activeConvo && socket) {
+            const room = String(activeConvo._id);
+            console.log(`[Chat] Emitting join_conversation for room: ${room}`);
+            socket.emit("join_conversation", room);
+        }
+    }, [activeConvo, connected, socket, socket?.id]);
 
     const loadConversations = async () => {
         try {
             const res = await fetchConversations();
             setConversations(res.data);
 
-            if (res.data.length > 0) {
-                // If we navigated here from Dashboard with a specific tradeId
-                if (targetTradeId) {
-                    const targetConvo = res.data.find(c => c.tradeRequest?._id === targetTradeId);
-                    if (targetConvo) {
-                        selectConversation(targetConvo);
-                    } else {
-                        // Fallback if conversation not found
-                        selectConversation(res.data[0]);
-                    }
-                } else {
+            // Prioritize target from navigation state
+            if (targetConversationId) {
+                const targetConvo = res.data.find(c => c._id === targetConversationId);
+                if (targetConvo) {
+                    selectConversation(targetConvo);
+                } else if (res.data.length > 0) {
                     selectConversation(res.data[0]);
                 }
+            } else if (res.data.length > 0) {
+                selectConversation(res.data[0]);
             }
         } catch (error) {
             console.error("Failed to load conversations", error);
@@ -57,59 +130,73 @@ const Chat = () => {
 
     const selectConversation = async (convo) => {
         setActiveConvo(convo);
+        setNewMessage("");
         try {
             const res = await fetchMessages(convo._id);
-            setMessages(res.data);
-
-            if (socket) {
-                socket.emit("join_conversation", convo._id);
-            }
+            // Payload is { messages, nextCursor }
+            setMessages(res.data.messages || []);
+            setNextCursor(res.data.nextCursor);
+            
+            // Mark as read locally in list
+            setConversations(prev => prev.map(c => c._id === convo._id ? { ...c, unreadCount: 0 } : c));
         } catch (error) {
             console.error("Failed to load messages", error);
         }
     };
 
-    useEffect(() => {
-        if (socket) {
-            socket.on("receive_message", (data) => {
-                if (activeConvo && data.conversationId === activeConvo._id) {
-                    setMessages((prev) => [...prev, data.messageData]);
-                }
-            });
+    const loadMoreMessages = async () => {
+        if (!nextCursor || isLoadingMore || !activeConvo) return;
+        setIsLoadingMore(true);
+        try {
+            const res = await fetchMessages(activeConvo._id, nextCursor);
+            setMessages(prev => [...(res.data.messages || []), ...prev]);
+            setNextCursor(res.data.nextCursor);
+        } catch (error) {
+            console.error("Failed to load more messages", error);
+        } finally {
+            setIsLoadingMore(false);
         }
-        return () => {
-            if (socket) socket.off("receive_message");
-        };
-    }, [socket, activeConvo]);
+    };
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
+    const handleTyping = (e) => {
+        setNewMessage(e.target.value);
+        if (socket && activeConvo) {
+            socket.emit("typing_start", { conversationId: activeConvo._id, userId: user._id });
+            // Debounce typing_end
+            if (window.typingTimeout) clearTimeout(window.typingTimeout);
+            window.typingTimeout = setTimeout(() => {
+                socket.emit("typing_end", { conversationId: activeConvo._id });
+            }, 2000);
+        }
+    };
+
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim() || !activeConvo) return;
+        if (!newMessage.trim() || !activeConvo || activeConvo.isReadOnly) return;
 
         const msgContent = newMessage;
         setNewMessage("");
+        if (socket) socket.emit("typing_end", { conversationId: activeConvo._id });
 
         try {
-            // Use HTTP to persist map
             const res = await sendMessageFallback(activeConvo._id, { content: msgContent });
-
             const messageData = res.data;
-            // Optimistic local update
-            setMessages((prev) => [...prev, { ...messageData, sender: { _id: user._id, email: user.email } }]);
+            
+            setMessages((prev) => [...prev, messageData]);
 
-            // Broadcast via socket
-            socket.emit("send_message", {
-                conversationId: activeConvo._id,
-                messageData: { ...messageData, sender: { _id: user._id, email: user.email } }
-            });
-
+            if (socket) {
+                socket.emit("send_message", {
+                    conversationId: String(activeConvo._id),
+                    messageData: messageData
+                });
+            }
         } catch (error) {
             console.error("Failed to send message", error);
-            toast.error("Failed to send message");
+            toast.error(error.response?.data?.message || "Failed to send message");
         }
     };
 
@@ -122,10 +209,17 @@ const Chat = () => {
 
     // Helper to determine the role of a participant in a conversation
     const getParticipantRole = (participantId, convo) => {
-        if (!convo.tradeRequest) return null;
+        if (convo.threadType === 'dormdash') {
+            // Logic for dormdash roles... assuming requester is mapped to customer in prompt's mind
+            // But I'll use requester/dasher
+            const isRequester = convo.referenceId?.requester === participantId;
+            return isRequester ? 'Requester' : 'Dasher';
+        }
 
-        const isOwner = convo.tradeRequest.owner === participantId;
-        const isBorrowType = convo.tradeRequest.type === 'borrow';
+        if (!convo.referenceId) return null; // Fallback
+
+        const isOwner = convo.referenceId.owner === participantId;
+        const isBorrowType = convo.referenceId.type === 'borrow';
 
         if (isOwner) {
             return isBorrowType ? 'Lender' : 'Seller';
@@ -141,10 +235,10 @@ const Chat = () => {
         let bgColor = "rgba(255,255,255,0.1)";
         let textColor = "var(--text-muted)";
 
-        if (role === 'Seller' || role === 'Lender') {
+        if (role === 'Seller' || role === 'Lender' || role === 'Dasher') {
             bgColor = "rgba(0, 212, 255, 0.15)";
             textColor = "var(--accent-cyan)";
-        } else if (role === 'Buyer' || role === 'Borrower') {
+        } else if (role === 'Buyer' || role === 'Borrower' || role === 'Requester') {
             bgColor = "rgba(112, 0, 255, 0.15)";
             textColor = "var(--accent-purple)";
         }
@@ -175,6 +269,10 @@ const Chat = () => {
                     <ArrowLeft size={20} />
                 </button>
                 <h1 className="text-gradient" style={{ fontSize: "2.5rem", margin: 0 }}>Messages</h1>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto", fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                    <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: connected ? "#00ff88" : "#ff4444" }} />
+                    {connected ? "Live" : "Disconnected"}
+                </div>
             </div>
 
             <div className="glass-panel" style={{ display: "flex", flex: 1, overflow: "hidden", borderRadius: "16px", border: "1px solid var(--border-glass)" }}>
@@ -186,9 +284,25 @@ const Chat = () => {
                     ) : (
                         <div style={{ overflowY: "auto", flex: 1 }}>
                             {conversations.map((c) => {
-                                const otherParticipant = c.participants.find(p => p._id !== user._id);
+                                // For group orders (3+ participants) show all members; otherwise show the one other person
+                                const otherParticipants = c.participants.filter(p => String(p._id) !== String(user._id));
+                                const isGroup = otherParticipants.length > 1;
+                                const primaryOther = otherParticipants[0];
                                 const isSelected = activeConvo?._id === c._id;
-                                const otherRole = getParticipantRole(otherParticipant?._id, c);
+                                const otherRole = getParticipantRole(primaryOther?._id, c);
+
+                                // Build a human-readable display name
+                                const displayName = isGroup
+                                    ? `Group Chat`
+                                    : (primaryOther?.name || primaryOther?.email?.split('@')[0] || 'User');
+
+                                // Build conversation subtitle based on polymorphic referenceId
+                                let subtitle = 'General Chat';
+                                if (c.threadType === 'marketplace') {
+                                    subtitle = c.referenceId?.listing?.title || c.referenceId?.title || 'Trade negotiation';
+                                } else if (c.threadType === 'dormdash') {
+                                    subtitle = `Order #${c.referenceId?._id?.slice(-5)} - ${c.referenceId?.pickupLocation || 'Delivery'}`;
+                                }
 
                                 return (
                                     <div
@@ -199,15 +313,22 @@ const Chat = () => {
                                             background: isSelected ? "rgba(0,212,255,0.1)" : "transparent",
                                             borderBottom: "1px solid rgba(255,255,255,0.05)",
                                             borderLeft: isSelected ? "3px solid var(--accent-cyan)" : "3px solid transparent",
-                                            transition: "background 0.2s"
+                                            transition: "background 0.2s",
+                                            position: "relative"
                                         }}
                                     >
-                                        <div style={{ fontWeight: "bold", color: isSelected ? "#fff" : "var(--text-secondary)", marginBottom: "4px", fontSize: "0.95rem", display: "flex", alignItems: "center" }}>
-                                            {otherParticipant?.email.split('@')[0]}
-                                            <RoleBadge role={otherRole} />
+                                        <div style={{ fontWeight: "bold", color: isSelected ? "#fff" : "var(--text-secondary)", marginBottom: "4px", fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                                            {isGroup && <span style={{ fontSize: "0.85rem" }}>👥</span>}
+                                            {displayName}
+                                            {!isGroup && <RoleBadge role={otherRole} />}
+                                            {c.unreadCount > 0 && (
+                                                <span style={{ marginLeft: "auto", background: "var(--accent-pink)", color: "#fff", fontSize: "0.65rem", padding: "2px 6px", borderRadius: "10px" }}>
+                                                    {c.unreadCount}
+                                                </span>
+                                            )}
                                         </div>
-                                        <div style={{ fontSize: "0.8rem", color: "var(--accent-purple)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                            {c.tradeRequest?.listing?.title || "Trade Negotiation"}
+                                        <div style={{ fontSize: "0.8rem", color: isSelected ? "var(--accent-cyan)" : "var(--accent-purple)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                            {subtitle}
                                         </div>
                                     </div>
                                 );
@@ -223,25 +344,48 @@ const Chat = () => {
                             {/* Chat Header */}
                             <div style={{ padding: "20px", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.02)" }}>
                                 <div>
-                                    <h3 style={{ margin: 0, color: "#fff", fontSize: "1.2rem", display: "flex", alignItems: "center" }}>
-                                        {activeConvo.participants.find(p => p._id !== user._id)?.email.split('@')[0]}
-                                        <RoleBadge role={getParticipantRole(activeConvo.participants.find(p => p._id !== user._id)?._id, activeConvo)} />
-                                    </h3>
-                                    <p style={{ margin: "5px 0 0", fontSize: "0.85rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "8px" }}>
-                                        Re: {activeConvo.tradeRequest?.listing?.title}
-                                        <RoleBadge role={getParticipantRole(user._id, activeConvo)} />
-                                        <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>(You)</span>
-                                    </p>
+                                    {(() => {
+                                        const others = activeConvo.participants.filter(p => String(p._id) !== String(user._id));
+                                        const isGroup = others.length > 1;
+                                        const headerName = isGroup
+                                            ? `Group Chat (${activeConvo.participants.length} members)`
+                                            : (others[0]?.name || others[0]?.email?.split('@')[0] || 'User');
+                                        
+                                        let subText = 'Direct Message';
+                                        if (activeConvo.threadType === 'marketplace') {
+                                            subText = activeConvo.referenceId?.listing?.title || 'Marketplace Item';
+                                        } else if (activeConvo.threadType === 'dormdash') {
+                                            subText = `DormDash Order - ${activeConvo.referenceId?.pickupLocation || 'Active delivery'}`;
+                                        }
+
+                                        return (
+                                            <>
+                                                <h3 style={{ margin: 0, color: "#fff", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                                                    {isGroup && <span>👥</span>}
+                                                    {headerName}
+                                                    {!isGroup && <RoleBadge role={getParticipantRole(others[0]?._id, activeConvo)} />}
+                                                </h3>
+                                                <p style={{ margin: "5px 0 0", fontSize: "0.85rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "8px" }}>
+                                                    {activeConvo.isReadOnly ? <span style={{ color: "#ff4444" }}>🔒 Archive: {subText}</span> : `Context: ${subText}`}
+                                                    <RoleBadge role={getParticipantRole(user._id, activeConvo)} />
+                                                </p>
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                                 <button onClick={handleReport} className="btn-neon" style={{ padding: "6px", background: "rgba(255,68,68,0.1)", borderColor: "transparent", color: "#ff4444", borderRadius: "8px" }} title="Report User">
                                     <AlertTriangle size={18} />
                                 </button>
                             </div>
-
-                            {/* Messages Container */}
-                            <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                            <div 
+                                style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}
+                                onScroll={(e) => {
+                                    if (e.target.scrollTop === 0) loadMoreMessages();
+                                }}
+                             >
+                                {isLoadingMore && <div style={{ textAlign: "center", fontSize: "0.8rem", color: "var(--text-muted)" }}>Loading history...</div>}
                                 {messages.map((msg, i) => {
-                                    const isMe = msg.sender._id === user._id;
+                                    const isMe = msg.sender?._id === user._id || msg.sender === user._id;
                                     return (
                                         <motion.div
                                             initial={{ opacity: 0, y: 10 }}
@@ -264,6 +408,11 @@ const Chat = () => {
                                         </motion.div>
                                     );
                                 })}
+                                {typingUsers[activeConvo._id]?.length > 0 && (
+                                    <div style={{ color: "var(--accent-cyan)", fontSize: "0.8rem", fontStyle: "italic", marginLeft: "10px" }}>
+                                        Someone is typing...
+                                    </div>
+                                )}
                                 <div ref={messagesEndRef} />
                             </div>
 
@@ -272,15 +421,17 @@ const Chat = () => {
                                 <input
                                     type="text"
                                     value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder="Type your message..."
+                                    onChange={handleTyping}
+                                    disabled={activeConvo.isReadOnly}
+                                    placeholder={activeConvo.isReadOnly ? "This chat is locked" : "Type your message..."}
                                     style={{
                                         flex: 1, padding: "12px 20px", borderRadius: "50px",
-                                        border: "1px solid var(--border-glass)", background: "rgba(0,0,0,0.5)",
-                                        color: "white", outline: "none"
+                                        border: "1px solid var(--border-glass)", background: activeConvo.isReadOnly ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.5)",
+                                        color: activeConvo.isReadOnly ? "var(--text-muted)" : "white", outline: "none",
+                                        cursor: activeConvo.isReadOnly ? "not-allowed" : "text"
                                     }}
                                 />
-                                <button type="submit" className="btn-neon primary" style={{ borderRadius: "50%", width: "50px", height: "50px", padding: "0", display: "flex", alignItems: "center", justifyContent: "center" }} disabled={!newMessage.trim()}>
+                                <button type="submit" className="btn-neon primary" style={{ borderRadius: "50%", width: "50px", height: "50px", padding: "0", display: "flex", alignItems: "center", justifyContent: "center" }} disabled={!newMessage.trim() || activeConvo.isReadOnly}>
                                     <Send size={20} />
                                 </button>
                             </form>

@@ -1,11 +1,21 @@
 import mongoose from 'mongoose';
 
 const conversationSchema = new mongoose.Schema({
-    tradeRequest: {
+    threadType: {
+        type: String,
+        enum: ['marketplace', 'dormdash'],
+        default: 'marketplace',
+        required: true
+    },
+    referenceId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'TradeRequest',
         required: true,
-        unique: true
+        refPath: 'threadModel'
+    },
+    threadModel: {
+        type: String,
+        required: true,
+        enum: ['TradeRequest', 'Order']
     },
     participants: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -15,6 +25,10 @@ const conversationSchema = new mongoose.Schema({
     lastMessage: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Message'
+    },
+    isReadOnly: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true });
 
