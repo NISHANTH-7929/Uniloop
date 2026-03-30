@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchListings, fetchCategories, createListing, fetchMyListings, deleteListing, updateListingStatus } from "../api/listingApi";
 import { createTradeRequest, fetchMyTrades, respondToTrade, completeTrade } from "../api/tradeApi";
 import { fetchWishlist, addToWishlist, removeFromWishlist } from "../api/wishlistApi";
 import { fetchConversations, fetchMessages, sendMessageFallback } from "../api/chatApi";
-import { io } from "socket.io-client";
 import { toast } from "react-toastify";
 import { Search, MapPin, Tag, Heart, MessageCircle, Package, RefreshCcw, Plus, Trash2, CheckCircle, XCircle, ShoppingBag, X, Send, ArrowLeft } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext";
 import { format } from "date-fns";
 
 /* ─── helpers ─── */
@@ -101,8 +102,9 @@ const Marketplace = () => {
     const [activeConvo, setActiveConvo] = useState(null);
     const [chatMessages, setChatMessages] = useState([]);
     const [newChatMsg, setNewChatMsg] = useState("");
-    const [chatSocket, setChatSocket] = useState(null);
+    const { socket: chatSocket, connected: chatSocketConnected } = useSocket();
     const messagesEndRef = useRef(null);
+    const activeConvoRef = useRef(activeConvo);
 
     /* ── initial load ── */
     useEffect(() => {
@@ -286,7 +288,7 @@ const Marketplace = () => {
 
     /* ── inline chat helpers ── */
     const openChat = async () => {
-        setChatOpen(true);
+        setActiveTab('messages');
         try {
             const res = await fetchConversations();
             setConversations(res.data);
@@ -299,24 +301,39 @@ const Marketplace = () => {
         try {
             const res = await fetchMessages(convo._id);
             setChatMessages(res.data);
-            if (chatSocket) chatSocket.emit('join_conversation', convo._id);
         } catch { /* silent */ }
     };
 
-    // Socket for messages tab chat
     useEffect(() => {
-        if (activeTab !== 'messages') return;
-        const API_BASE = import.meta.env.VITE_API_URI || 'http://localhost:5000';
-        const sock = io(API_BASE);
-        setChatSocket(sock);
-        sock.on('receive_message', (data) => {
-            if (activeConvo && data.conversationId === activeConvo._id) {
+        activeConvoRef.current = activeConvo;
+    }, [activeConvo]);
+
+    // Global socket listeners for this component
+    useEffect(() => {
+        if (!chatSocket || !chatSocketConnected || activeTab !== 'messages') return;
+
+        const handleReceiveMessage = (data) => {
+            console.log("Marketplace message received via global socket:", data);
+            const currentConvoId = activeConvoRef.current?._id;
+            if (currentConvoId && String(data.conversationId) === String(currentConvoId)) {
                 setChatMessages(prev => [...prev, data.messageData]);
             }
-        });
-        return () => sock.close();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeTab]);
+        };
+
+        chatSocket.on('receive_message', handleReceiveMessage);
+        return () => {
+            chatSocket.off('receive_message', handleReceiveMessage);
+        };
+    }, [chatSocket, chatSocketConnected, activeTab]);
+
+    // Join room when activeConvo or connection status changes
+    useEffect(() => {
+        if (chatSocketConnected && activeConvo && chatSocket) {
+            const room = String(activeConvo._id);
+            console.log(`[Marketplace] Emitting join_conversation for room: ${room}`);
+            chatSocket.emit('join_conversation', room);
+        }
+    }, [activeConvo, chatSocketConnected, chatSocket, chatSocket?.id]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -331,7 +348,12 @@ const Marketplace = () => {
             const res = await sendMessageFallback(activeConvo._id, { content });
             const md = res.data;
             setChatMessages(prev => [...prev, { ...md, sender: { _id: user._id, email: user.email } }]);
-            if (chatSocket) chatSocket.emit('send_message', { conversationId: activeConvo._id, messageData: { ...md, sender: { _id: user._id, email: user.email } } });
+            if (chatSocket) {
+                chatSocket.emit('send_message', { 
+                    conversationId: String(activeConvo._id), 
+                    messageData: { ...md, sender: { _id: user._id, email: user.email } } 
+                });
+            }
         } catch { toast.error("Failed to send message"); }
     };
 
@@ -549,6 +571,10 @@ const Marketplace = () => {
                     <div>
                         <h1 className="text-gradient" style={{ fontSize: "2.8rem", marginBottom: "6px" }}>Marketplace</h1>
                         <p style={{ color: "var(--text-secondary)", fontSize: "1rem" }}>Buy, sell, rent &amp; borrow within the UniLoop network.</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(0,0,0,0.2)", padding: "6px 12px", borderRadius: "12px", border: "1px solid var(--border-glass)", marginLeft: "auto" }}>
+                        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: chatSocketConnected ? "#00ff88" : "#ff4444" }} />
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{chatSocketConnected ? "Live Connection" : "Offline"}</span>
                     </div>
                     <button onClick={() => setIsCreatingListing(true)} className="btn-neon primary" style={{ padding: "10px 22px", display: "flex", alignItems: "center", gap: "8px", height: "fit-content" }}>
                         <Plus size={18} /> List Item

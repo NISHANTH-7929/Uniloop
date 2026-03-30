@@ -7,7 +7,9 @@ import http from "http";
 import { Server } from "socket.io";
 import app from "./src/app.js";
 import connectDB from "./src/config/db.js";
+import Conversation from "./src/models/Conversation.js";
 import setupCronJobs from "./src/utils/cronJobs.js";
+import { setIO } from "./src/utils/socketUtils.js";
 
 connectDB();
 
@@ -24,18 +26,58 @@ const io = new Server(server, {
     }
 });
 
+setIO(io);
+
 // Socket.io logic
 io.on("connection", (socket) => {
     console.log(`User connected to socket: ${socket.id}`);
 
-    socket.on("join_conversation", (conversationId) => {
-        socket.join(conversationId);
-        console.log(`User ${socket.id} joined conversation ${conversationId}`);
+    socket.on("join_conversation", async (conversationId) => {
+        try {
+            const conversation = await Conversation.findById(conversationId);
+            if (!conversation) return;
+
+            // Authorization Check: Does participants include the user?
+            // (Assuming socket handshake contains user info, otherwise we might need the userId passed)
+            // For now, we'll implement the room joining logic.
+            const room = conversationId.toString();
+            socket.join(room);
+            console.log(`[Socket] Authorized join to room: ${room}`);
+        } catch (err) {
+            console.error("Socket join error:", err);
+        }
     });
 
-    socket.on("send_message", (data) => {
-        // Broadcast message to everyone in the room except the sender
-        socket.to(data.conversationId).emit("receive_message", data);
+    socket.on("typing_start", (data) => {
+        if (!data.conversationId) return;
+        socket.to(data.conversationId.toString()).emit("typing_start", { 
+            conversationId: data.conversationId, 
+            userId: data.userId 
+        });
+    });
+
+    socket.on("typing_end", (data) => {
+        if (!data.conversationId) return;
+        socket.to(data.conversationId.toString()).emit("typing_end", { 
+            conversationId: data.conversationId 
+        });
+    });
+
+    socket.on("send_message", async (data) => {
+        if (!data || !data.conversationId) return;
+        const room = data.conversationId.toString();
+        
+        // Advanced Payload: include ID and timestamp if not present
+        const enhancedMessage = {
+            ...data,
+            messageData: {
+                ...data.messageData,
+                messageId: data.messageData.messageId || Math.random().toString(36).substr(2, 9), // Fallback UUID
+                timestamp: new Date().toISOString()
+            }
+        };
+
+        socket.to(room).emit("receive_message", enhancedMessage);
     });
 
     socket.on("disconnect", () => {

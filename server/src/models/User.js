@@ -58,6 +58,23 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    dormDash: {
+        dasherMode: { type: Boolean, default: false },
+        isOnline: { type: Boolean, default: false },
+        ratings: {
+            asRequester: {
+                total: { type: Number, default: 0 },
+                count: { type: Number, default: 0 },
+            },
+            asDasher: {
+                total: { type: Number, default: 0 },
+                count: { type: Number, default: 0 },
+            },
+        },
+        ordersCompleted: { type: Number, default: 0 },
+        onTimeDeliveries: { type: Number, default: 0 },
+        badges: [{ type: String }],
+    },
 }, { timestamps: true });
 
 // Hash password before saving

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getNotifications } from "../api/events";
+import { fetchConversations } from "../api/chatApi";
+import { useSocket } from "../context/SocketContext";
 import "./Navbar.css";
 
 const AppNavbar = () => {
@@ -11,6 +13,8 @@ const AppNavbar = () => {
     const [scrolled, setScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [unreadMessages, setUnreadMessages] = useState(0);
+    const { socket } = useSocket();
 
     useEffect(() => {
         const handleScroll = () => {
@@ -27,21 +31,52 @@ const AppNavbar = () => {
 
     useEffect(() => {
         let mounted = true;
-        const loadNotifications = async () => {
-            if (!user) return setUnreadCount(0);
+        
+        const loadCounts = async () => {
+            if (!user) {
+                setUnreadCount(0);
+                setUnreadMessages(0);
+                return;
+            }
             try {
-                const { data } = await getNotifications();
-                if (!mounted) return;
-                const unread = data.filter(n => !n.isRead).length;
-                setUnreadCount(unread);
+                // Notifications
+                const notifRes = await getNotifications();
+                if (mounted) {
+                    setUnreadCount(notifRes.data.filter(n => !n.isRead).length);
+                }
+
+                // Messages
+                const chatRes = await fetchConversations();
+                if (mounted) {
+                    const totalUnread = chatRes.data.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+                    setUnreadMessages(totalUnread);
+                }
             } catch (err) {
-                console.error('Failed to fetch notifications for navbar', err);
+                console.error('Failed to fetch counts for navbar', err);
             }
         };
-        loadNotifications();
-        // refresh count whenever location changes
+
+        loadCounts();
+        
+        // Refresh when location changes (in case user marks as read on page)
         return () => { mounted = false; };
     }, [user, location.pathname]);
+
+    // Socket listener for global unread messages
+    useEffect(() => {
+        if (!socket || !user) return;
+
+        const handleNewMessage = (data) => {
+            // Only increment if we aren't already on the chat page (which handles its own unread)
+            // Actually, increment anyway to keep navbar in sync, or let chat page reset it.
+            if (location.pathname !== '/chat') {
+                setUnreadMessages(prev => prev + 1);
+            }
+        };
+
+        socket.on("receive_message", handleNewMessage);
+        return () => socket.off("receive_message", handleNewMessage);
+    }, [socket, user, location.pathname]);
 
     const handleLogout = async () => {
         await logout();
@@ -92,6 +127,17 @@ const AppNavbar = () => {
                                     <span className="nav-text">Marketplace</span>
                                     <div className="nav-indicator"></div>
                                 </Link>
+                                <Link className={`nav-link ${isActive('/dormdash')}`} to="/dormdash">
+                                    <span className="nav-text">DormDash</span>
+                                    <div className="nav-indicator"></div>
+                                </Link>
+                                <Link className={`nav-link ${isActive('/chat')}`} to="/chat" style={{ position: 'relative' }}>
+                                    <span className="nav-text">Messages</span>
+                                    {unreadMessages > 0 && (
+                                        <span style={{ position: 'absolute', top: 2, right: -6, width: 10, height: 10, borderRadius: 6, background: 'var(--accent-cyan)' }} />
+                                    )}
+                                    <div className="nav-indicator"></div>
+                                </Link>
 
 
                                 {user.role === 'admin' && (
@@ -134,6 +180,8 @@ const AppNavbar = () => {
                             <Link className="mobile-link" to="/dashboard">Dashboard</Link>
                             <Link className="mobile-link" to="/events">Events</Link>
                             <Link className="mobile-link" to="/marketplace">Marketplace</Link>
+                            <Link className="mobile-link" to="/dormdash">DormDash</Link>
+                            <Link className="mobile-link" to="/chat">Messages</Link>
 
                             {user.role === 'admin' && (
                                 <Link className="mobile-link" to="/admin" style={{ color: "var(--accent-pink)" }}>Admin Area</Link>

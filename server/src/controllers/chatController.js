@@ -8,15 +8,26 @@ import validator from 'validator';
 export const getConversations = async (req, res) => {
     try {
         const conversations = await Conversation.find({ participants: req.user._id })
-            .populate('participants', 'email trustScore averageRating')
+            .populate('participants', 'name email trustScore averageRating')
             .populate('lastMessage')
             .populate({
-                path: 'tradeRequest',
-                populate: { path: 'listing', select: 'title images price' }
+                path: 'referenceId',
+                select: 'title images price status items pickupLocation dropLocation charge',
+                // Mongoose handles the dynamic ref via refPath 'threadModel' automatically
             })
             .sort({ updatedAt: -1 });
 
-        res.status(200).json(conversations);
+        // Calculate unread counts manually for each conversation
+        const enrichedConversations = await Promise.all(conversations.map(async (c) => {
+            const unreadCount = await Message.countDocuments({
+                conversation: c._id,
+                sender: { $ne: req.user._id },
+                isRead: false
+            });
+            return { ...c.toObject(), unreadCount };
+        }));
+
+        res.status(200).json(enrichedConversations);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
@@ -38,9 +49,20 @@ export const getMessages = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized for this conversation' });
         }
 
-        const messages = await Message.find({ conversation: req.params.conversationId })
-            .populate('sender', 'email')
-            .sort({ createdAt: 1 }); // Oldest to newest for chat UI
+        const { cursor, limit = 20 } = req.query;
+        const query = { conversation: req.params.conversationId };
+        
+        if (cursor) {
+            query.createdAt = { $lt: new Date(cursor) };
+        }
+
+        const messages = await Message.find(query)
+            .populate('sender', 'name email')
+            .sort({ createdAt: -1 }) // Get newest first for pagination
+            .limit(Number(limit));
+
+        // Result should be oldest to newest for UI
+        const sortedMessages = messages.reverse();
 
         // Mark messages as read
         await Message.updateMany(
@@ -48,7 +70,10 @@ export const getMessages = async (req, res) => {
             { $set: { isRead: true } }
         );
 
-        res.status(200).json(messages);
+        res.status(200).json({
+            messages: sortedMessages,
+            nextCursor: messages.length === limit ? messages[0].createdAt : null
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
@@ -74,6 +99,10 @@ export const sendMessage = async (req, res) => {
 
         if (!conversation.participants.includes(req.user._id)) {
             return res.status(403).json({ message: 'Not authorized for this conversation' });
+        }
+
+        if (conversation.isReadOnly) {
+            return res.status(403).json({ message: 'This conversation is read-only. Order may be closed or cancelled.' });
         }
 
         const sanitizedContent = validator.escape(content);

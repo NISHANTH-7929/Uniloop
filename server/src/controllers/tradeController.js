@@ -178,11 +178,16 @@ export const respondToTradeRequest = async (req, res) => {
             await listing.save();
 
             // Create Conversation channel between the two parties
-            const conversationExists = await Conversation.findOne({ tradeRequest: tradeRequest._id });
+            const conversationExists = await Conversation.findOne({ 
+                threadType: 'marketplace', 
+                referenceId: tradeRequest._id 
+            });
 
             if (!conversationExists) {
                 await Conversation.create({
-                    tradeRequest: tradeRequest._id,
+                    threadType: 'marketplace',
+                    referenceId: tradeRequest._id,
+                    threadModel: 'TradeRequest',
                     participants: [tradeRequest.requester, tradeRequest.owner]
                 });
             }
