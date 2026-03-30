@@ -16,6 +16,7 @@ import reportRoutes from "./routes/reportRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import communityRoutes from "./routes/community.js";
 import dormdashRoutes from "./routes/dormdash.js";
 
 const app = express();
@@ -61,6 +62,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/community", communityRoutes);
 app.use("/api/dormdash", dormdashRoutes);
 
 app.get("/", (req, res) => {

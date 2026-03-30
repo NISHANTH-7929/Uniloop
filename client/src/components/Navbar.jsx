@@ -127,6 +127,10 @@ const AppNavbar = () => {
                                     <span className="nav-text">Marketplace</span>
                                     <div className="nav-indicator"></div>
                                 </Link>
+                                <Link className={`nav-link ${location.pathname.startsWith('/community') ? 'active' : ''}`} to="/community">
+                                    <span className="nav-text">Community</span>
+                                    <div className="nav-indicator"></div>
+                                </Link>
                                 <Link className={`nav-link ${isActive('/dormdash')}`} to="/dormdash">
                                     <span className="nav-text">DormDash</span>
                                     <div className="nav-indicator"></div>
@@ -180,6 +184,7 @@ const AppNavbar = () => {
                             <Link className="mobile-link" to="/dashboard">Dashboard</Link>
                             <Link className="mobile-link" to="/events">Events</Link>
                             <Link className="mobile-link" to="/marketplace">Marketplace</Link>
+                            <Link className="mobile-link" to="/community">Community</Link>
                             <Link className="mobile-link" to="/dormdash">DormDash</Link>
                             <Link className="mobile-link" to="/chat">Messages</Link>
 

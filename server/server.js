@@ -26,11 +26,17 @@ const io = new Server(server, {
     }
 });
 
+// Expose io instance to all controllers via socketUtils
 setIO(io);
 
 // Socket.io logic
 io.on("connection", (socket) => {
     console.log(`User connected to socket: ${socket.id}`);
+
+    // Allow clients to join their personal userId room for targeted events
+    socket.on("join_user_room", (userId) => {
+        socket.join(userId);
+    });
 
     socket.on("join_conversation", async (conversationId) => {
         try {
