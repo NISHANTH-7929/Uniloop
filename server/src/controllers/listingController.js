@@ -129,6 +129,11 @@ export const updateListing = async (req, res) => {
         const newPrice = req.body.price;
         const isPriceDrop = newPrice !== undefined && newPrice < oldPrice;
 
+        // Block price edits when a trade is in progress
+        if (newPrice !== undefined && listing.status === 'pending') {
+            return res.status(400).json({ message: 'Cannot change price while a trade is in progress' });
+        }
+
         listing = await Listing.findByIdAndUpdate(
             req.params.id,
             req.body,

@@ -22,3 +22,6 @@ export const addToWishlist = (listingId) => API.post('/wishlist', { listingId })
 
 // Remove by wishlist doc _id (not listing id)
 export const removeFromWishlist = (wishlistItemId) => API.delete(`/wishlist/${wishlistItemId}`);
+
+// Toggle price drop alert for a wishlist item
+export const toggleWishlistPriceAlert = (wishlistItemId) => API.patch(`/wishlist/${wishlistItemId}/price-alert`);

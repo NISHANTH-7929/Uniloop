@@ -22,6 +22,7 @@ export const createListing = (data) => API.post('/listings', data);
 export const updateListing = (id, data) => API.put(`/listings/${id}`, data);
 export const deleteListing = (id) => API.delete(`/listings/${id}`);
 export const updateListingStatus = (id, status) => API.put(`/listings/${id}`, { status });
+export const editListing = (id, data) => API.put(`/listings/${id}`, data);
 
 export const fetchCategories = () => API.get('/directory/categories');
 export const fetchLocations = () => API.get('/directory/locations');

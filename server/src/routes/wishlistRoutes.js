@@ -2,7 +2,8 @@ import express from 'express';
 import {
     addToWishlist,
     getWishlist,
-    removeFromWishlist
+    removeFromWishlist,
+    togglePriceAlert
 } from '../controllers/wishlistController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -14,5 +15,8 @@ router.route('/')
 
 router.route('/:id')
     .delete(protect, removeFromWishlist);
+
+router.route('/:id/price-alert')
+    .patch(protect, togglePriceAlert);
 
 export default router;

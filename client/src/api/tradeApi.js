@@ -22,3 +22,6 @@ export const respondToTrade = (id, data) => API.put(`/trades/${id}/respond`, dat
 export const fetchBorrows = (params) => API.get('/borrows', { params });
 export const confirmReturn = (id) => API.put(`/borrows/${id}/confirm-return`);
 export const completeTrade = (id) => API.put(`/trades/${id}/complete`);
+export const cancelTrade = (id) => API.put(`/trades/${id}/cancel`);
+export const submitTradeReview = (tradeId, rating, comment, type) => API.post('/reviews', { tradeId, rating, comment, type });
+export const fetchUserReviews = (userId) => API.get(`/reviews/user/${userId}`);
