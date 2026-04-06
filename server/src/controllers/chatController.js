@@ -147,3 +147,46 @@ export const resetAllChats = async (req, res) => {
         res.status(500).json({ message: 'Server Error' });
     }
 };
+
+// @desc    Find or create conversation dynamically
+// @route   POST /api/chat/conversations/find-or-create
+// @access  Private
+export const findOrCreateConversation = async (req, res) => {
+    try {
+        const { participantId, referenceId, threadModel } = req.body;
+        if (!participantId) return res.status(400).json({ message: "Participant ID required" });
+        if (participantId === req.user._id.toString()) return res.status(400).json({ message: "Cannot chat with yourself" });
+
+        let conversation;
+        if (referenceId && threadModel) {
+            conversation = await Conversation.findOne({
+                referenceId,
+                threadModel,
+                participants: { $all: [req.user._id, participantId] }
+            });
+            if (!conversation) {
+                conversation = await Conversation.create({
+                    participants: [req.user._id, participantId],
+                    referenceId,
+                    threadModel,
+                    isReadOnly: false,
+                });
+            }
+        } else {
+            conversation = await Conversation.findOne({
+                referenceId: { $exists: false },
+                participants: { $all: [req.user._id, participantId] }
+            });
+            if (!conversation) {
+                conversation = await Conversation.create({
+                    participants: [req.user._id, participantId],
+                    isReadOnly: false,
+                });
+            }
+        }
+        res.status(200).json(conversation);
+    } catch (error) { 
+        console.error(error);
+        res.status(500).json({ message: "Server Error" }); 
+    }
+};

@@ -1,6 +1,6 @@
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
-import { mentalHealthGuard } from "../middleware/mentalHealthGuard.js";
+
 
 // Controllers
 import * as lostFound        from "../controllers/lostFoundController.js";
@@ -9,7 +9,6 @@ import * as tutoring         from "../controllers/tutoringController.js";
 import * as skills           from "../controllers/skillExchangeController.js";
 import * as qa               from "../controllers/qaController.js";
 import * as complaints       from "../controllers/complaintController.js";
-import * as mentalHealth     from "../controllers/mentalHealthController.js";
 import * as notices          from "../controllers/noticeController.js";
 import * as profile          from "../controllers/communityProfileController.js";
 
@@ -21,6 +20,7 @@ router.get(   "/lostfound",                  protect, lostFound.getItems);
 router.get(   "/lostfound/my",               protect, lostFound.getMyItems);
 router.get(   "/lostfound/:id",              protect, lostFound.getItem);
 router.post(  "/lostfound/:id/claim",        protect, lostFound.claimItem);
+router.post(  "/lostfound/:id/report-found", protect, lostFound.reportFound);
 router.patch( "/lostfound/:id/confirm-claim",protect, lostFound.confirmClaim);
 router.post(  "/lostfound/:id/review",       protect, lostFound.submitReview);
 router.get(   "/lostfound/:id/review",       protect, lostFound.getReview);
@@ -71,14 +71,6 @@ router.get(   "/complaints/my",           protect, complaints.getMyComplaints);
 router.get(   "/complaints/:id",          protect, complaints.getComplaint);
 router.patch( "/complaints/:id/metoo",    protect, complaints.toggleMeToo);
 router.patch( "/complaints/:id/respond",  protect, complaints.adminRespond);
-
-// ─── Mental Health ───────────────────────────────────────────────────────────
-router.post( "/mentalhealth/log",       protect,                     mentalHealth.logMood);
-router.get(  "/mentalhealth/log",       protect,                     mentalHealth.getMoodLogs);
-router.get(  "/mentalhealth/trend",     protect,                     mentalHealth.getMoodTrend);
-router.get(  "/mentalhealth/slots",                                  mentalHealth.getCounselorSlots); // PUBLIC
-router.post( "/mentalhealth/book",      protect,                     mentalHealth.bookCounselorSlot);
-router.get(  "/mentalhealth/bookings",  protect,                     mentalHealth.getMyBookings);
 
 // ─── Campus Notices ──────────────────────────────────────────────────────────
 router.post(  "/notices",           protect, notices.createNotice);

@@ -12,7 +12,7 @@ const notificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['info', 'success', 'warning', 'error', 'trade_request', 'trade_accepted', 'trade_rejected', 'borrow_reminder', 'borrow_overdue', 'listing_expired', 'price_drop', 'system'],
+        enum: ['info', 'success', 'warning', 'error', 'trade_request', 'trade_accepted', 'trade_rejected', 'borrow_reminder', 'borrow_overdue', 'listing_expired', 'price_drop', 'system', 'blood_request'],
         default: 'info'
     },
     title: {

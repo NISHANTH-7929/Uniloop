@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { getEmergency, respondToEmergency, resolveEmergency, confirmResponder } from "../../api/communityApi";
 import { useAuth } from "../../context/AuthContext";
 import BloodTypeBadge from "../../components/community/BloodTypeBadge";
+import { findOrCreateConversation } from "../../api/chatApi";
 import { toast } from "react-toastify";
 
 const EmergencyDetail = () => {
     const { id } = useParams();
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [item, setItem]   = useState(null);
     const [msg, setMsg]     = useState("");
     const [loading, setLoading] = useState(false);
+    const [chatLoading, setChatLoading] = useState(false);
 
     const load = async () => {
         try { const r = await getEmergency(id); setItem(r.data.data); } catch (_) {}
@@ -32,6 +35,22 @@ const EmergencyDetail = () => {
     const handleResolve = async () => {
         try { await resolveEmergency(id); toast.success("Marked as resolved"); load(); }
         catch (err) { toast.error(err.response?.data?.message || "Failed"); }
+    };
+
+    const handleMessage = async (participantId) => {
+        if (!participantId) return;
+        setChatLoading(participantId);
+        try {
+            const res = await findOrCreateConversation({
+                participantId,
+                referenceId: id,
+                threadModel: "EmergencyRequest",
+            });
+            navigate("/dormdash/messages", { state: { conversationId: res.data._id, threadType: "emergency" } });
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Could not open chat");
+        }
+        setChatLoading(false);
     };
 
     return (
@@ -57,6 +76,17 @@ const EmergencyDetail = () => {
                             style={{ padding: "11px 24px", background: item.type === "blood" ? "linear-gradient(135deg, #e74c3c, #c0392b)" : "linear-gradient(135deg, #7000ff, #00d4ff)", border: "none", borderRadius: "10px", color: "#fff", fontWeight: "bold", cursor: "pointer" }}>
                             {loading ? "Sending…" : item.type === "blood" ? "I Can Donate" : "Respond"}
                         </button>
+
+                        {/* Message poster directly */}
+                        {(item.poster?._id || item.poster) && (
+                            <button
+                                onClick={() => handleMessage(item.poster?._id || item.poster)}
+                                disabled={chatLoading === (item.poster?._id || item.poster)}
+                                style={{ marginTop: "8px", padding: "10px 20px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "10px", color: "#00d4ff", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                            >
+                                💬 Message Reporter
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -65,9 +95,21 @@ const EmergencyDetail = () => {
                     <h3 style={{ color: "#fff", marginBottom: "14px" }}>Responses ({item.responses?.length || 0})</h3>
                     {item.responses?.map((r, i) => (
                         <div key={i} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "12px", padding: "16px", marginBottom: "10px" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", flexWrap: "wrap", gap: "8px" }}>
                                 <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>{r.responder?.email?.split("@")[0] || "User"}</span>
-                                {r.confirmed && <span style={{ color: "#00ff88", fontSize: "0.78rem" }}>✓ Confirmed</span>}
+                                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                    {r.confirmed && <span style={{ color: "#00ff88", fontSize: "0.78rem" }}>✓ Confirmed</span>}
+                                    {/* Message this responder (owner only) / Message owner (responder) */}
+                                    {isOwner && (r.responder?._id || r.responder) && (
+                                        <button
+                                            onClick={() => handleMessage(r.responder?._id || r.responder)}
+                                            disabled={chatLoading === (r.responder?._id || r.responder)}
+                                            style={{ padding: "4px 12px", background: "rgba(0,212,255,0.12)", border: "1px solid rgba(0,212,255,0.3)", borderRadius: "8px", color: "#00d4ff", fontSize: "0.78rem", cursor: "pointer" }}
+                                        >
+                                            💬 Message
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             <p style={{ color: "var(--text-secondary)", margin: 0 }}>{r.message}</p>
                             {isOwner && !r.confirmed && (

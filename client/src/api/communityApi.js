@@ -19,6 +19,7 @@ export const getMyLostFoundItems= ()       => api.get("/lostfound/my");
 export const getLostFoundItem   = (id)     => api.get(`/lostfound/${id}`);
 export const createLostFoundItem= (data)   => api.post("/lostfound", data);
 export const claimItem          = (id, data)=> api.post(`/lostfound/${id}/claim`, data);
+export const reportFoundForLostItem=(id,d)  => api.post(`/lostfound/${id}/report-found`, d);
 export const confirmClaim       = (id)     => api.patch(`/lostfound/${id}/confirm-claim`);
 export const submitLFReview     = (id, data)=> api.post(`/lostfound/${id}/review`, data);
 export const getLFReview        = (id)     => api.get(`/lostfound/${id}/review`);
@@ -69,14 +70,6 @@ export const getComplaint     = (id)    => api.get(`/complaints/${id}`);
 export const createComplaint  = (data)  => api.post("/complaints", data);
 export const toggleMeToo      = (id)    => api.patch(`/complaints/${id}/metoo`);
 export const adminRespondComplaint=(id,d)=> api.patch(`/complaints/${id}/respond`, d);
-
-// ─── Mental Health ───────────────────────────────────────────────────────────
-export const logMood          = (data)  => api.post("/mentalhealth/log", data);
-export const getMoodLogs      = ()      => api.get("/mentalhealth/log");
-export const getMoodTrend     = ()      => api.get("/mentalhealth/trend");
-export const getCounselorSlots= ()      => api.get("/mentalhealth/slots");
-export const bookCounselorSlot= (data)  => api.post("/mentalhealth/book", data);
-export const getMyBookings    = ()      => api.get("/mentalhealth/bookings");
 
 // ─── Notices ─────────────────────────────────────────────────────────────────
 export const getNotices     = (params)=> api.get("/notices", { params });

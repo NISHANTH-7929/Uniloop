@@ -15,7 +15,7 @@ const lostFoundItemSchema = new Schema({
         required: true
     },
     locationTag: { type: String, required: true },
-    imageUrl:    { type: String, default: null },
+    imageUrl:    { type: String, required: [true, "A photo is required for all lost & found submissions."] },
     status:      { type: String, enum: ["active","claimed","archived"], default: "active" },
     claimVerification: {
         question:   String,
@@ -38,14 +38,19 @@ const lostFoundItemSchema = new Schema({
         submittedAt: Date,
     },
     reviewsRevealed: { type: Boolean, default: false },
+    foundReports: [{
+        reporter: { type: Types.ObjectId, ref: "User" },
+        imageUrl: { type: String, required: true },
+        message: { type: String },
+        reportedAt: { type: Date, default: Date.now }
+    }],
 }, { timestamps: true });
 
 // Auto-set expiresAt
-lostFoundItemSchema.pre("save", function (next) {
+lostFoundItemSchema.pre("save", function () {
     if (this.isNew && !this.expiresAt) {
         this.expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
     }
-    next();
 });
 
 const LostFoundItem = model("LostFoundItem", lostFoundItemSchema);

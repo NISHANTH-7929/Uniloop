@@ -61,7 +61,7 @@ const OrderCard = ({ order, isDasherFeed }) => {
           <button 
             onClick={(e) => {
               e.preventDefault();
-              navigate('/chat', { state: { conversationId: order.chatThreadId || order._id, threadType: 'dormdash' } });
+              navigate('/dormdash/messages', { state: { conversationId: order.chatThreadId || order._id, threadType: 'dormdash' } });
             }}
             className="btn-neon" 
             style={{ padding: "4px 10px", fontSize: "0.7rem", display: "flex", alignItems: "center", gap: "5px" }}

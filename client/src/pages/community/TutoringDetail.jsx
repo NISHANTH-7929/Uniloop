@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { getTutoringSession, matchTutoringSession, scheduleTutoringSession, completeTutoringSession, cancelTutoringSession, submitTutoringReview, getTutoringReview } from "../../api/communityApi";
 import { useAuth } from "../../context/AuthContext";
 import ChargeDisplay from "../../components/shared/ChargeDisplay";
 import ReviewModal from "../../components/shared/ReviewModal";
 import ReviewReveal from "../../components/community/ReviewReveal";
+import { findOrCreateConversation } from "../../api/chatApi";
 import { toast } from "react-toastify";
 
 const TutoringDetail = () => {
     const { id } = useParams();
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [session, setSession]    = useState(null);
     const [showReview, setShowReview] = useState(false);
     const [review, setReview]      = useState(null);
     const [schedDate, setSchedDate]= useState("");
+    const [chatLoading, setChatLoading] = useState(false);
 
     const load = async () => {
         try { const r = await getTutoringSession(id); setSession(r.data.data); } catch (_) {}
@@ -31,6 +34,23 @@ const TutoringDetail = () => {
     const isParty = userId === tutorId || userId === learnerId;
 
     const action = async (fn, msg) => { try { await fn(); toast.success(msg); load(); } catch (err) { toast.error(err.response?.data?.message || "Failed"); } };
+
+    const handleMessage = async () => {
+        const partnerId = userId === tutorId ? learnerId : tutorId;
+        if (!partnerId) return;
+        setChatLoading(true);
+        try {
+            const res = await findOrCreateConversation({
+                participantId: partnerId,
+                referenceId: id,
+                threadModel: "TutoringSession",
+            });
+            navigate("/dormdash/messages", { state: { conversationId: res.data._id, threadType: "tutoring" } });
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Could not open chat");
+        }
+        setChatLoading(false);
+    };
 
     return (
         <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>
@@ -70,6 +90,15 @@ const TutoringDetail = () => {
                                 <button id="tutoring-cancel-btn" onClick={() => action(() => cancelTutoringSession(id), "Cancelled")}
                                     style={{ padding: "11px 22px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", color: "var(--text-muted)", cursor: "pointer" }}>
                                     Cancel
+                                </button>
+                                {/* Message Partner */}
+                                <button
+                                    id="tutoring-message-btn"
+                                    onClick={handleMessage}
+                                    disabled={chatLoading}
+                                    style={{ padding: "11px 22px", background: "rgba(0,212,255,0.12)", border: "1px solid rgba(0,212,255,0.3)", borderRadius: "10px", color: "#00d4ff", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                                >
+                                    💬 {chatLoading ? "Opening…" : `Message ${session.sessionType === "offer" ? "Tutor" : "Student"}`}
                                 </button>
                             </>
                         )}

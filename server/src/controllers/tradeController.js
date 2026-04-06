@@ -129,6 +129,9 @@ export const getTradeRequests = async (req, res) => {
         const myReviews = await Review.find({ reviewer: req.user._id }).select('trade');
         const myReviewedTradeIds = myReviews.map(r => r.trade.toString());
 
+        // Filter out orphaned trades (where the original listing got deleted) to avoid "Unknown Items" in the UI
+        trades = trades.filter(t => t.listing != null);
+
         trades = trades.map(trade => ({
             ...trade,
             isReviewedByMe: myReviewedTradeIds.includes(trade._id.toString())

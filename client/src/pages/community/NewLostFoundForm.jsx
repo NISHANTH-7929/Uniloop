@@ -28,11 +28,25 @@ const NewLostFoundForm = () => {
         claimQuestion: "",
         claimAnswer: "",
     });
+    const [imageData, setImageData] = useState(""); // base64 data URL
+    const [imagePreview, setImagePreview] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
     const set = (k) => (e) =>
         setForm(f => ({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { setError("Image must be under 5 MB."); return; }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImageData(reader.result); // base64 data URL
+            setImagePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -40,6 +54,10 @@ const NewLostFoundForm = () => {
         if (!form.title.trim()) { setError("Title is required"); return; }
         if (!form.description.trim()) { setError("Description is required"); return; }
         if (!form.locationTag.trim()) { setError("Location is required"); return; }
+        if (!imageData) { setError("A photo is required for all posts."); return; }
+        if (form.type === "found" && (!form.claimQuestion.trim() || !form.claimAnswer.trim())) {
+            setError("A claim verification question and answer are mandatory for found items."); return;
+        }
 
         setLoading(true);
         try {
@@ -50,6 +68,7 @@ const NewLostFoundForm = () => {
                 description:form.description.trim(),
                 category:   form.category,
                 locationTag:form.locationTag.trim(),
+                imageUrl:   imageData,
                 isAnonymous:form.isAnonymous,
             };
             if (form.type === "found" && form.claimQuestion.trim()) {
@@ -187,6 +206,65 @@ const NewLostFoundForm = () => {
                             </div>
                         </div>
 
+                        {/* Image Upload — Mandatory */}
+                        <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+                                <label style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>Photo</label>
+                                <span style={{
+                                    padding: "2px 10px", borderRadius: "20px", fontSize: "0.72rem", fontWeight: "700",
+                                    background: imageData ? "rgba(0,255,136,0.15)" : "rgba(255,68,68,0.15)",
+                                    color: imageData ? "#00ff88" : "#ff6464",
+                                    letterSpacing: "0.5px", textTransform: "uppercase",
+                                }}>
+                                    {imageData ? "✓ Photo Added" : "Required"}
+                                </span>
+                                <span style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginLeft: "auto" }}>max 5 MB</span>
+                            </div>
+
+                            <label
+                                htmlFor="lf-image-input"
+                                style={{
+                                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                                    gap: "10px", padding: "28px 16px",
+                                    border: `2px dashed ${imageData ? "rgba(0,212,255,0.5)" : "rgba(255,68,68,0.4)"}`,
+                                    borderRadius: "14px", cursor: "pointer",
+                                    background: imageData ? "rgba(0,212,255,0.05)" : "rgba(255,68,68,0.04)",
+                                    transition: "all 0.25s",
+                                    minHeight: imageData ? "auto" : "130px",
+                                }}
+                            >
+                                {imagePreview ? (
+                                    <img
+                                        src={imagePreview}
+                                        alt="Preview"
+                                        style={{ width: "100%", maxHeight: "240px", objectFit: "cover", borderRadius: "10px" }}
+                                    />
+                                ) : (
+                                    <>
+                                        <span style={{ fontSize: "2.4rem" }}>📸</span>
+                                        <div style={{ textAlign: "center" }}>
+                                            <div style={{ color: "#fff", fontWeight: "600", fontSize: "0.9rem", marginBottom: "4px" }}>
+                                                Tap to upload a photo
+                                            </div>
+                                            <div style={{ color: "#ff6464", fontSize: "0.8rem" }}>
+                                                A photo is required — no post without one
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                                {imagePreview && (
+                                    <span style={{ fontSize: "0.78rem", color: "#00d4ff" }}>🔄 Click to change photo</span>
+                                )}
+                            </label>
+                            <input
+                                id="lf-image-input"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageChange}
+                                style={{ display: "none" }}
+                            />
+                        </div>
+
                         {/* Claim verification (Found only) */}
                         {form.type === "found" && (
                             <div style={{
@@ -195,13 +273,14 @@ const NewLostFoundForm = () => {
                                 borderRadius: "12px", padding: "18px",
                             }}>
                                 <p style={{ color: "#00d4ff", fontSize: "0.82rem", fontWeight: "bold", marginBottom: "14px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                                    🔒 Claim Verification (optional)
+                                    🔒 Claim Verification <span style={{ color: "#ff6464" }}>*</span>
                                 </p>
                                 <p style={{ color: "var(--text-muted)", fontSize: "0.83rem", marginBottom: "12px" }}>
                                     Set a question only the owner could answer, to verify claims.
                                 </p>
                                 <div style={{ display: "grid", gap: "12px" }}>
                                     <input
+                                        required
                                         className="community-input"
                                         value={form.claimQuestion}
                                         onChange={set("claimQuestion")}
@@ -209,6 +288,7 @@ const NewLostFoundForm = () => {
                                     />
                                     {form.claimQuestion && (
                                         <input
+                                            required
                                             className="community-input"
                                             value={form.claimAnswer}
                                             onChange={set("claimAnswer")}

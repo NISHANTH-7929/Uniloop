@@ -15,6 +15,7 @@ API.interceptors.request.use((req) => {
 });
 
 export const fetchConversations = () => API.get('/chat/conversations');
+export const findOrCreateConversation = (data) => API.post('/chat/conversations/find-or-create', data);
 export const fetchMessages = (conversationId, cursor = null) => 
     API.get(`/chat/${conversationId}/messages${cursor ? `?cursor=${cursor}` : ''}`);
 export const sendMessageFallback = (conversationId, data) => API.post(`/chat/${conversationId}/messages`, data);
