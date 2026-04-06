@@ -45,6 +45,7 @@ const DormDashHome = () => {
           <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>Check out your recent orders and group carts.</p>
         </div>
         <div style={{ display: "flex", gap: "10px" }}>
+          <Link to="/dormdash/messages" className="btn-neon" style={{ padding: "8px 16px", borderColor: "var(--accent-cyan)", color: "var(--accent-cyan)" }}>Messages</Link>
           <Link to="/dormdash/group-order" className="btn-neon" style={{ padding: "8px 16px", borderColor: "var(--accent-pink)", color: "var(--accent-pink)" }}>Group Orders</Link>
           <Link to="/dormdash/my-orders" className="btn-neon primary" style={{ padding: "8px 16px" }}>View My Orders</Link>
         </div>

@@ -1,5 +1,6 @@
 import TutoringSession from "../models/TutoringSession.js";
 import User from "../models/User.js";
+import Notification from "../models/Notification.js";
 import { getIO } from "../utils/socketUtils.js";
 import { checkAndAwardBadges } from "../utils/communityBadgeUtils.js";
 
@@ -73,9 +74,19 @@ export const matchSession = async (req, res) => {
 
         try {
             const io = getIO();
-            [session.tutor.toString(), session.learner?.toString()].filter(Boolean).forEach(id =>
-                io.to(id).emit("tutoring:matched", { sessionId: session._id })
-            );
+            const ids = [session.tutor.toString(), session.learner?.toString()].filter(Boolean);
+            ids.forEach(id => io.to(id).emit("tutoring:matched", { sessionId: session._id }));
+            // DB notifications for both parties
+            for (const id of ids) {
+                const partnerLabel = id === session.tutor.toString() ? "A learner" : "A tutor";
+                await Notification.create({
+                    recipient: id,
+                    type: "success",
+                    title: "🎓 Tutoring Session Matched!",
+                    message: `${partnerLabel} matched with your '${session.subject}' session. Message them to schedule!`,
+                    relatedId: session._id,
+                });
+            }
         } catch (_) {}
 
         return res.json({ success: true, data: session });
@@ -95,9 +106,17 @@ export const scheduleSession = async (req, res) => {
 
         try {
             const io = getIO();
-            [session.tutor.toString(), session.learner?.toString()].filter(Boolean).forEach(id =>
-                io.to(id).emit("tutoring:scheduled", { sessionId: session._id, scheduledAt: session.scheduledAt })
-            );
+            const ids = [session.tutor.toString(), session.learner?.toString()].filter(Boolean);
+            ids.forEach(id => io.to(id).emit("tutoring:scheduled", { sessionId: session._id, scheduledAt: session.scheduledAt }));
+            for (const id of ids) {
+                await Notification.create({
+                    recipient: id,
+                    type: "info",
+                    title: "📅 Session Scheduled",
+                    message: `Your '${session.subject}' session is scheduled for ${new Date(session.scheduledAt).toLocaleString()}.`,
+                    relatedId: session._id,
+                });
+            }
         } catch (_) {}
 
         return res.json({ success: true, data: session });
@@ -117,6 +136,19 @@ export const completeSession = async (req, res) => {
         if (!session.completedByFirst) {
             session.completedByFirst = req.user._id;
             await session.save();
+            // Notify the other party that first confirmation is in
+            const otherId = req.user._id.toString() === session.tutor.toString() ? session.learner : session.tutor;
+            if (otherId) {
+                try {
+                    await Notification.create({
+                        recipient: otherId,
+                        type: "info",
+                        title: "🟡 Waiting for Your Completion Confirmation",
+                        message: `Your partner marked the '${session.subject}' session as complete. Please confirm to finalise.`,
+                        relatedId: session._id,
+                    });
+                } catch (_) {}
+            }
             return res.json({ success: true, message: "Marked — waiting for other party to confirm" });
         }
 
@@ -142,9 +174,17 @@ export const completeSession = async (req, res) => {
 
         try {
             const io = getIO();
-            [session.tutor.toString(), session.learner?.toString()].filter(Boolean).forEach(id =>
-                io.to(id).emit("tutoring:completed", { sessionId: session._id })
-            );
+            const ids = [session.tutor.toString(), session.learner?.toString()].filter(Boolean);
+            ids.forEach(id => io.to(id).emit("tutoring:completed", { sessionId: session._id }));
+            for (const id of ids) {
+                await Notification.create({
+                    recipient: id,
+                    type: "success",
+                    title: "✅ Session Completed!",
+                    message: `Your '${session.subject}' tutoring session is complete. Don't forget to leave a review!`,
+                    relatedId: session._id,
+                });
+            }
         } catch (_) {}
 
         return res.json({ success: true, data: session });

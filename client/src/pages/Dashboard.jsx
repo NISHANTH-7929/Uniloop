@@ -10,9 +10,10 @@ import { useNavigate } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 
 const Dashboard = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
     const displayName = user?.email ? user.email.split('@')[0] : "Traveler";
+
 
     const [trades, setTrades] = useState([]);
     const [borrows, setBorrows] = useState([]);
@@ -21,7 +22,13 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("pending");
 
+    const handleLogout = async () => {
+        await logout();
+        navigate("/auth", { replace: true });
+    };
+
     // Review Modal State
+
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const [reviewData, setReviewData] = useState({ tradeId: '', rating: 5, comment: '', type: 'buyer' });
 
@@ -56,7 +63,7 @@ const Dashboard = () => {
             setTrades(trades.map(t => t._id === tradeId ? { ...t, status } : t));
 
             if (status === 'accepted') {
-                navigate('/chat');
+                navigate('/dormdash/messages');
             }
         } catch (error) {
             toast.error(error.response?.data?.message || `Failed to ${status} trade`);
@@ -230,13 +237,22 @@ const Dashboard = () => {
                     <p style={{ color: "var(--accent-pink)", margin: "0", fontSize: "0.85rem" }}>My Registrations</p>
                 </motion.div>
 
-                <motion.div variants={itemVariants} className="glass-panel" style={{ padding: "30px", position: "relative", overflow: "hidden" }}>
+                <motion.div variants={itemVariants} className="glass-panel" style={{ padding: "30px", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                     <div style={{ position: "absolute", top: "-20px", right: "-20px", width: "100px", height: "100px", background: strikeCount > 0 ? "rgba(255, 0, 0, 0.2)" : "rgba(0, 255, 100, 0.2)", filter: "blur(30px)", borderRadius: "50%" }}></div>
-                    <h3 style={{ color: "var(--text-muted)", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "1px" }}>Account Standing</h3>
-                    <div style={{ fontSize: "1.5rem", fontWeight: "800", color: "#fff", margin: "15px 0" }}>
-                        {strikeCount === 0 ? "Excellent ✅" : `${strikeCount} Strike(s) ⚠️`}
+                    <div>
+                        <h3 style={{ color: "var(--text-muted)", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "1px" }}>Account Standing</h3>
+                        <div style={{ fontSize: "1.5rem", fontWeight: "800", color: "#fff", margin: "15px 0" }}>
+                            {strikeCount === 0 ? "Excellent ✅" : `${strikeCount} Strike(s) ⚠️`}
+                        </div>
+                        <p style={{ color: "var(--text-secondary)", margin: "0 0 15px 0", fontSize: "0.85rem", textTransform: "capitalize" }}>Role: {user?.role || "Student"}</p>
                     </div>
-                    <p style={{ color: "var(--text-secondary)", margin: "0", fontSize: "0.85rem", textTransform: "capitalize" }}>Role: {user?.role || "Student"}</p>
+                    <button 
+                        onClick={handleLogout}
+                        className="btn-neon"
+                        style={{ padding: "6px 12px", fontSize: "0.85rem", borderColor: "rgba(255,68,68,0.5)", color: "#ff4444", alignSelf: "flex-start" }}
+                    >
+                        Log Out Account
+                    </button>
                 </motion.div>
             </motion.div>
 
@@ -344,7 +360,7 @@ const Dashboard = () => {
                                                 <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                                                     <span style={{ color: "var(--accent-purple)", fontSize: "0.9rem", marginRight: "10px" }}>Trade Accepted</span>
                                                     <button
-                                                        onClick={() => navigate('/chat', { state: { tradeId: trade._id } })}
+                                                        onClick={() => navigate('/dormdash/messages', { state: { tradeId: trade._id } })}
                                                         className="btn-neon"
                                                         style={{ padding: "6px 16px", borderColor: "var(--accent-cyan)", color: "var(--accent-cyan)" }}
                                                     >
@@ -381,7 +397,7 @@ const Dashboard = () => {
                                                         </div>
                                                         <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                                                             <button
-                                                                onClick={() => navigate('/chat', { state: { tradeId: borrow.tradeRequest } })}
+                                                                onClick={() => navigate('/dormdash/messages', { state: { tradeId: borrow.tradeRequest } })}
                                                                 className="btn-neon"
                                                                 style={{ padding: "6px 16px", borderColor: "var(--accent-cyan)", color: "var(--accent-cyan)" }}
                                                             >
@@ -426,7 +442,7 @@ const Dashboard = () => {
                                                         </div>
                                                         <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                                                             <button
-                                                                onClick={() => navigate('/chat', { state: { tradeId: borrow.tradeRequest } })}
+                                                                onClick={() => navigate('/dormdash/messages', { state: { tradeId: borrow.tradeRequest } })}
                                                                 className="btn-neon"
                                                                 style={{ padding: "6px 16px", borderColor: "var(--accent-cyan)", color: "var(--accent-cyan)" }}
                                                             >

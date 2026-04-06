@@ -125,6 +125,13 @@ export const respondToEmergency = async (req, res) => {
                 emergencyId: item._id,
                 responder: req.user.email,
             });
+            await Notification.create({
+                recipient: item.poster,
+                type: "info",
+                title: "🚨 Someone Responded to Your Emergency",
+                message: `${req.user.email.split("@")[0]} responded to '${item.title}'. Tap to view and confirm them.`,
+                relatedId: item._id,
+            });
         } catch (_) {}
 
         return res.json({ success: true, message: "Response registered" });
@@ -158,6 +165,18 @@ export const confirmResponder = async (req, res) => {
             }
         }
 
+        // Notify the confirmed responder
+        try {
+            getIO().to(req.params.responderId).emit("emergency:confirmed", { emergencyId: item._id });
+            await Notification.create({
+                recipient: req.params.responderId,
+                type: "success",
+                title: "✅ Your Response Was Confirmed!",
+                message: `The poster confirmed your response to '${item.title}'. Thank you for helping!`,
+                relatedId: item._id,
+            });
+        } catch (_) {}
+
         return res.json({ success: true, message: "Responder confirmed" });
     } catch (err) { return handleError(res, err); }
 };
@@ -180,6 +199,13 @@ export const resolveEmergency = async (req, res) => {
             const io = getIO();
             for (const r of item.responses) {
                 io.to(r.responder.toString()).emit("emergency:resolved", { emergencyId: item._id });
+                await Notification.create({
+                    recipient: r.responder,
+                    type: "info",
+                    title: "🟢 Emergency Resolved",
+                    message: `'${item.title}' was marked as resolved. Thank you for responding!`,
+                    relatedId: item._id,
+                });
             }
         } catch (_) {}
 

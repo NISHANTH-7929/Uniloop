@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getLostFoundItem, claimItem, confirmClaim, submitLFReview, getLFReview } from "../../api/communityApi";
+import { getLostFoundItem, claimItem, confirmClaim, submitLFReview, getLFReview, reportFoundForLostItem } from "../../api/communityApi";
 import { useAuth } from "../../context/AuthContext";
 import ReviewReveal from "../../components/community/ReviewReveal";
 import ReviewModal from "../../components/shared/ReviewModal";
@@ -25,6 +25,12 @@ const LostFoundDetail = () => {
     const [showReview, setShowReview]   = useState(false);
     const [review, setReview]           = useState(null);
     const [error, setError]             = useState("");
+
+    const [showFoundReport, setShowFoundReport] = useState(false);
+    const [foundImageData, setFoundImageData] = useState(""); // base64
+    const [foundImagePreview, setFoundImagePreview] = useState("");
+    const [foundMessage, setFoundMessage] = useState("");
+    const [foundLoading, setFoundLoading] = useState(false);
 
     const load = async () => {
         try {
@@ -64,6 +70,37 @@ const LostFoundDetail = () => {
             toast.error(msg);
         }
         setClaimLoading(false);
+    };
+
+    const handleFoundReport = async (e) => {
+        e.preventDefault();
+        setFoundLoading(true);
+        setError("");
+        if (!foundImageData) { setError("A photo is required."); setFoundLoading(false); return; }
+        try {
+            await reportFoundForLostItem(id, { imageUrl: foundImageData, message: foundMessage.trim() });
+            toast.success("✅ Found report sent to the owner!");
+            setShowFoundReport(false);
+            setFoundImageData("");
+            setFoundImagePreview("");
+            setFoundMessage("");
+            load();
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to send report");
+        }
+        setFoundLoading(false);
+    };
+
+    const handleFoundImageChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { setError("Image must be under 5 MB."); return; }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setFoundImageData(reader.result);
+            setFoundImagePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
     };
 
     const handleConfirm = async () => {
@@ -160,6 +197,12 @@ const LostFoundDetail = () => {
                         {item.description}
                     </p>
 
+                    {item.imageUrl && (
+                        <div style={{ marginBottom: "20px" }}>
+                            <img src={item.imageUrl} alt="Item" style={{ width: "100%", maxHeight: "300px", objectFit: "cover", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" }} />
+                        </div>
+                    )}
+
                     {/* Info grid */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "24px" }}>
                         {[
@@ -193,6 +236,21 @@ const LostFoundDetail = () => {
                                 }}
                             >
                                 🙋 I Lost This — Claim It
+                            </button>
+                        )}
+                        
+                        {/* Report Found button (only for lost items, not own) */}
+                        {item.status === "active" && item.type === "lost" && !isFinder && (
+                            <button
+                                onClick={() => setShowFoundReport(v => !v)}
+                                style={{
+                                    padding: "13px", background: "linear-gradient(135deg, #00ff88, #00d4ff)",
+                                    border: "none", borderRadius: "12px", color: "#111",
+                                    fontWeight: "700", fontSize: "1rem", cursor: "pointer",
+                                    boxShadow: "0 4px 20px rgba(0,255,136,0.3)",
+                                }}
+                            >
+                                🔍 I Found This
                             </button>
                         )}
 
@@ -238,6 +296,75 @@ const LostFoundDetail = () => {
                                     <button
                                         type="button"
                                         onClick={() => { setShowClaim(false); setError(""); }}
+                                        style={{ padding: "11px 20px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", color: "var(--text-muted)", cursor: "pointer" }}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* Found Report form (inline) */}
+                        {showFoundReport && (
+                            <form onSubmit={handleFoundReport} style={{
+                                background: "rgba(0,255,136,0.08)", border: "1px solid rgba(0,255,136,0.2)",
+                                borderRadius: "14px", padding: "20px",
+                            }}>
+                                {error && (
+                                    <div style={{ background: "rgba(255,68,68,0.12)", border: "1px solid rgba(255,68,68,0.3)", borderRadius: "8px", padding: "10px 14px", color: "#ff6464", fontSize: "0.88rem", marginBottom: "14px" }}>
+                                        ⚠️ {error}
+                                    </div>
+                                )}
+                                <p style={{ color: "#00ff88", fontWeight: "600", marginBottom: "8px" }}>
+                                    📸 Submit Found Report
+                                </p>
+                                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "12px" }}>
+                                    Upload an image of the item you found and optionally add a message.
+                                </p>
+                                <div style={{ display: "grid", gap: "12px", marginBottom: "12px" }}>
+                                    {/* File picker */}
+                                    <label
+                                        htmlFor="report-image-input"
+                                        style={{
+                                            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                                            gap: "8px", padding: "18px 12px",
+                                            border: `2px dashed ${foundImagePreview ? "rgba(0,212,255,0.5)" : "rgba(0,255,136,0.3)"}`,
+                                            borderRadius: "12px", cursor: "pointer",
+                                            background: foundImagePreview ? "rgba(0,212,255,0.05)" : "rgba(0,255,136,0.04)",
+                                            minHeight: foundImagePreview ? "auto" : "90px",
+                                        }}
+                                    >
+                                        {foundImagePreview ? (
+                                            <img src={foundImagePreview} alt="Preview" style={{ width: "100%", maxHeight: "180px", objectFit: "cover", borderRadius: "8px" }} />
+                                        ) : (
+                                            <>
+                                                <span style={{ fontSize: "1.8rem" }}>📸</span>
+                                                <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>Tap to choose a photo *</span>
+                                            </>
+                                        )}
+                                        {foundImagePreview && <span style={{ fontSize: "0.75rem", color: "#00d4ff" }}>🔄 Change photo</span>}
+                                    </label>
+                                    <input id="report-image-input" type="file" accept="image/*" onChange={handleFoundImageChange} style={{ display: "none" }} />
+
+                                    <textarea
+                                        className="community-input"
+                                        value={foundMessage}
+                                        onChange={e => setFoundMessage(e.target.value)}
+                                        placeholder="Message (optional, e.g. Contact info)"
+                                        rows={2}
+                                    />
+                                </div>
+                                <div style={{ display: "flex", gap: "10px" }}>
+                                    <button
+                                        type="submit"
+                                        disabled={foundLoading}
+                                        style={{ flex: 1, padding: "11px", background: "linear-gradient(135deg, #00ff88, #00d4ff)", border: "none", borderRadius: "10px", color: "#111", fontWeight: "700", cursor: "pointer" }}
+                                    >
+                                        {foundLoading ? "Sending…" : "Send Report"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowFoundReport(false); setError(""); }}
                                         style={{ padding: "11px 20px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", color: "var(--text-muted)", cursor: "pointer" }}
                                     >
                                         Cancel

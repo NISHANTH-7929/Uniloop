@@ -13,6 +13,7 @@ import DasherDashboard from './DasherDashboard';
 import EarningsLog from './EarningsLog';
 import CanteenMenu from './CanteenMenu';
 import PublicDashProfile from './PublicDashProfile';
+import Chat from '../Chat';
 
 const DormDashGuard = ({ children }) => {
   const { user, loading } = useAuth();
@@ -82,6 +83,7 @@ const DormDashRoutes = () => {
             <Route path="dasher/earnings" element={<EarningsLog />} />
             <Route path="canteen" element={<CanteenMenu />} />
             <Route path="profile/:userId" element={<PublicDashProfile />} />
+            <Route path="messages" element={<Chat />} />
           </Routes>
         </DormDashProvider>
       </DormDashLayout>

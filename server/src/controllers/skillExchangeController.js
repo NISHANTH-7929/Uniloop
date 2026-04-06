@@ -1,5 +1,6 @@
 import SkillExchange from "../models/SkillExchange.js";
 import User from "../models/User.js";
+import Notification from "../models/Notification.js";
 import { getIO } from "../utils/socketUtils.js";
 import { checkAndAwardBadges } from "../utils/communityBadgeUtils.js";
 
@@ -57,6 +58,22 @@ export const matchSkill = async (req, res) => {
 
         try {
             getIO().to(skill.poster.toString()).emit("skills:matched", { skillId: skill._id });
+            // Notify poster (they were waited on)
+            await Notification.create({
+                recipient: skill.poster,
+                type: "success",
+                title: "🤝 Skill Exchange Match!",
+                message: `${req.user.email.split("@")[0]} matched your '${skill.offerSkill} ⇄ ${skill.wantSkill}' exchange. Message them to schedule!`,
+                relatedId: skill._id,
+            });
+            // Also notify the matcher
+            await Notification.create({
+                recipient: req.user._id,
+                type: "success",
+                title: "🤝 Skill Exchange Match!",
+                message: `You matched the '${skill.offerSkill} ⇄ ${skill.wantSkill}' exchange. Message the poster to coordinate!`,
+                relatedId: skill._id,
+            });
         } catch (_) {}
 
         return res.json({ success: true, data: skill });
@@ -73,6 +90,19 @@ export const completeSkill = async (req, res) => {
         if (!skill.completedByFirst) {
             skill.completedByFirst = req.user._id;
             await skill.save();
+            // Notify the other party to confirm
+            const otherId = req.user._id.toString() === skill.poster.toString() ? skill.matchedWith : skill.poster;
+            if (otherId) {
+                try {
+                    await Notification.create({
+                        recipient: otherId,
+                        type: "info",
+                        title: "🟡 Confirm Skill Exchange Completion",
+                        message: `Your partner marked the '${skill.offerSkill} ⇄ ${skill.wantSkill}' exchange as done. Confirm to finalise and leave a review!`,
+                        relatedId: skill._id,
+                    });
+                } catch (_) {}
+            }
             return res.json({ success: true, message: "Marked — waiting for other party" });
         }
         if (skill.completedByFirst.toString() === userId) {
@@ -94,9 +124,17 @@ export const completeSkill = async (req, res) => {
 
         try {
             const io = getIO();
-            [skill.poster.toString(), skill.matchedWith?.toString()].filter(Boolean).forEach(id =>
-                io.to(id).emit("skills:completed", { skillId: skill._id })
-            );
+            const ids = [skill.poster.toString(), skill.matchedWith?.toString()].filter(Boolean);
+            ids.forEach(id => io.to(id).emit("skills:completed", { skillId: skill._id }));
+            for (const id of ids) {
+                await Notification.create({
+                    recipient: id,
+                    type: "success",
+                    title: "✅ Skill Exchange Complete!",
+                    message: `Your '${skill.offerSkill} ⇄ ${skill.wantSkill}' exchange is complete. Leave a review to help others!`,
+                    relatedId: skill._id,
+                });
+            }
         } catch (_) {}
 
         return res.json({ success: true, data: skill });

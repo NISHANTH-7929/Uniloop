@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import LostFoundItem from "../models/LostFoundItem.js";
 import User from "../models/User.js";
+import Notification from "../models/Notification.js";
 import { getIO } from "../utils/socketUtils.js";
 import { runLostFoundMatch } from "../utils/matchUtils.js";
 import { checkAndAwardBadges } from "../utils/communityBadgeUtils.js";
@@ -21,6 +22,13 @@ export const createItem = async (req, res) => {
         const { type, title, description, category, locationTag, imageUrl,
                 isAnonymous, claimQuestion, claimAnswer } = req.body;
 
+        if (!imageUrl) {
+            return res.status(400).json({ success: false, message: "An image is required for all lost & found submissions." });
+        }
+        if (type === "found" && (!claimQuestion || !claimAnswer)) {
+            return res.status(400).json({ success: false, message: "A claim question and answer are mandatory for found items." });
+        }
+
         let answerHash = null;
         if (type === "found" && claimAnswer) {
             answerHash = await bcrypt.hash(claimAnswer, 10);
@@ -30,7 +38,7 @@ export const createItem = async (req, res) => {
             reporter:    isAnonymous ? null : req.user._id,
             isAnonymous: !!isAnonymous,
             type, title, description, category, locationTag,
-            imageUrl: imageUrl || null,
+            imageUrl,
             claimVerification: {
                 question: claimQuestion || null,
                 answerHash,
@@ -120,7 +128,7 @@ export const claimItem = async (req, res) => {
         item.claimVerification.claimedBy = req.user._id;
         await item.save();
 
-        // Notify finder via socket
+        // Notify reporter (finder) via socket + DB
         if (item.reporter && !item.isAnonymous) {
             try {
                 const reporterIdStr = item.reporter._id?.toString() || item.reporter.toString();
@@ -128,6 +136,13 @@ export const claimItem = async (req, res) => {
                     itemId:       item._id,
                     claimerName:  req.user.email.split("@")[0],
                     claimerId:    req.user._id,
+                });
+                await Notification.create({
+                    recipient: reporterIdStr,
+                    type: "info",
+                    title: "📦 Claim Request Received",
+                    message: `${req.user.email.split("@")[0]} claimed your item '${item.title}'. Go confirm it!`,
+                    relatedId: item._id,
                 });
             } catch (_) {}
         }
@@ -154,11 +169,18 @@ export const confirmClaim = async (req, res) => {
         item.claimVerification.claimedAt = new Date();
         await item.save();
 
-        // Notify claimer
+        // Notify claimer + log it
         try {
             getIO().to(item.claimVerification.claimedBy.toString()).emit("lostfound:claimed", {
                 itemId:     item._id,
                 finderName: req.user.email.split("@")[0],
+            });
+            await Notification.create({
+                recipient: item.claimVerification.claimedBy,
+                type: "success",
+                title: "✅ Claim Confirmed!",
+                message: `Your claim on '${item.title}' was confirmed by the finder. Collect it soon!`,
+                relatedId: item._id,
             });
         } catch (_) {}
 
@@ -237,5 +259,43 @@ export const getReview = async (req, res) => {
         if (!item) return res.status(404).json({ success: false, message: "Item not found" });
         if (!item.reviewsRevealed) return res.json({ success: true, waiting: true });
         return res.json({ success: true, data: { finderReview: item.finderReview, claimerReview: item.claimerReview } });
+    } catch (err) { return handleError(res, err); }
+};
+
+// POST /lostfound/:id/report-found
+export const reportFound = async (req, res) => {
+    try {
+        const item = await LostFoundItem.findById(req.params.id).populate("reporter", "email");
+        if (!item) return res.status(404).json({ success: false, message: "Item not found" });
+        if (item.type !== "lost") return res.status(400).json({ success: false, message: "Can only report finding a 'lost' item" });
+        if (item.status !== "active") return res.status(400).json({ success: false, message: "Item is not active" });
+
+        const { imageUrl, message } = req.body;
+        if (!imageUrl) return res.status(400).json({ success: false, message: "Image is required to verify you found it" });
+
+        item.foundReports.push({
+            reporter: req.user._id,
+            imageUrl,
+            message
+        });
+        await item.save();
+
+        // Broadcast to reporter (lost item owner)
+        if (item.reporter && !item.isAnonymous) {
+            try {
+                const reporterIdStr = item.reporter._id?.toString() || item.reporter.toString();
+                getIO().to(reporterIdStr).emit("lostfound:foundReport", {
+                    itemId: item._id, alertMessage: `Someone claims they found your '${item.title}'!`
+                });
+                await Notification.create({
+                    recipient: reporterIdStr,
+                    type: "success",
+                    title: "🔍 Someone Found Your Item!",
+                    message: `${req.user.email.split("@")[0]} says they found '${item.title}'. Check Lost & Found for their photo!`,
+                    relatedId: item._id,
+                });
+            } catch (_) {}
+        }
+        return res.json({ success: true, message: "Report sent to the owner." });
     } catch (err) { return handleError(res, err); }
 };

@@ -3,19 +3,18 @@ import mongoose from 'mongoose';
 const conversationSchema = new mongoose.Schema({
     threadType: {
         type: String,
-        enum: ['marketplace', 'dormdash'],
-        default: 'marketplace',
-        required: true
+        enum: ['marketplace', 'dormdash', 'emergency', 'tutoring', 'skill', 'direct'],
+        default: 'direct',
     },
     referenceId: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true,
+        required: false,
         refPath: 'threadModel'
     },
     threadModel: {
         type: String,
-        required: true,
-        enum: ['TradeRequest', 'Order']
+        required: false,
+        enum: ['TradeRequest', 'Order', 'EmergencyRequest', 'TutoringSession', 'SkillExchange']
     },
     participants: [{
         type: mongoose.Schema.Types.ObjectId,

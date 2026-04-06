@@ -16,7 +16,6 @@ import EventDetails from "./pages/EventDetails";
 import SubeventDetails from "./pages/SubeventDetails";
 import ViewTickets from "./pages/ViewTickets";
 import Notifications from "./pages/Notifications";
-import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
 import DormDashRoutes from "./pages/dormdash/DormDashRoutes";
@@ -50,7 +49,6 @@ import NewQuestionForm       from "./pages/community/NewQuestionForm";
 import ComplaintFeed         from "./pages/community/ComplaintFeed";
 import ComplaintDetail       from "./pages/community/ComplaintDetail";
 import NewComplaintForm      from "./pages/community/NewComplaintForm";
-import MentalHealthDashboard from "./pages/community/MentalHealthDashboard";
 import NoticesFeed           from "./pages/community/NoticesFeed";
 import NoticeDetail          from "./pages/community/NoticeDetail";
 import NewNoticeForm         from "./pages/community/NewNoticeForm";
@@ -86,7 +84,6 @@ const AppInner = () => {
           <Route path="/scanner/:eventId" element={<Scanner />} />
           <Route path="/volunteer/:eventId/:volunteerId" element={<VolunteerDetails />} />
           <Route path="/organizer" element={<Organizer />} />
-          <Route path="/chat" element={<Chat />} />
           <Route path="/admin" element={<AdminDashboard />} />
           {/* ─── Community Support ────────────── */}
           <Route path="/community" element={<CommunityHome />} />
@@ -108,7 +105,6 @@ const AppInner = () => {
           <Route path="/community/complaints" element={<ComplaintFeed />} />
           <Route path="/community/complaints/new" element={<NewComplaintForm />} />
           <Route path="/community/complaints/:id" element={<ComplaintDetail />} />
-          <Route path="/community/mentalhealth" element={<MentalHealthDashboard />} />
           <Route path="/community/notices" element={<NoticesFeed />} />
           <Route path="/community/notices/new" element={<NewNoticeForm />} />
           <Route path="/community/notices/:id" element={<NoticeDetail />} />

@@ -40,12 +40,7 @@ const MODULES = [
         path: "/community/complaints", color: "#ff7f50",
         stat: "Anonymous & secure reporting",
     },
-    {
-        id: "mentalhealth", icon: "💚", label: "Mental Health",
-        desc: "Private mood tracking & counseling slots",
-        path: "/community/mentalhealth", color: "#00ff88",
-        stat: "Your data stays private",
-    },
+
     {
         id: "notices", icon: "📌", label: "Campus Notices",
         desc: "Official announcements & updates",
@@ -83,7 +78,7 @@ const CommunityHome = () => {
                         Community Support
                     </h1>
                     <p style={{ color: "var(--text-muted)", fontSize: "1.05rem", maxWidth: "520px", margin: "0 auto" }}>
-                        8 ways to connect, help, and grow together on campus
+                        7 ways to connect, help, and grow together on campus
                     </p>
                 </div>
 

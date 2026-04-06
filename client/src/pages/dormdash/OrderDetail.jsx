@@ -60,7 +60,7 @@ const OrderDetail = () => {
         alert("Request sent to user! Waiting for their confirmation.");
       } else if (actionPath === 'confirm') {
         if (data.chatThreadId) {
-          navigate('/chat', { state: { conversationId: data.chatThreadId, threadType: 'dormdash' } });
+          navigate('/dormdash/messages', { state: { conversationId: data.chatThreadId, threadType: 'dormdash' } });
         }
       }
 
@@ -286,7 +286,7 @@ const OrderDetail = () => {
             {/* Phase 4: Advanced Chat Entry Points */}
             {!['open', 'ACCEPTED_BY_DASHER', 'cancelled'].includes(order.status) && (
               <button 
-                onClick={() => navigate('/chat', { state: { conversationId: order.chatThreadId || order._id, threadType: 'dormdash' } })} 
+                onClick={() => navigate('/dormdash/messages', { state: { conversationId: order.chatThreadId || order._id, threadType: 'dormdash' } })} 
                 className="btn-neon"
                 style={{ width: "100%", marginBottom: "15px", display: "flex", justifyContent: "center", gap: "10px", alignItems: "center" }}
               >

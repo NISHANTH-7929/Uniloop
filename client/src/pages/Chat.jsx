@@ -263,9 +263,9 @@ const Chat = () => {
     if (!user) return null;
 
     return (
-        <div style={{ padding: "100px 20px 40px", maxWidth: "1200px", margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ height: "calc(100vh - 150px)", display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", alignItems: "center", marginBottom: "20px", gap: "15px" }}>
-                <button onClick={() => navigate('/dashboard')} className="btn-neon" style={{ padding: "8px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <button onClick={() => navigate('/dormdash')} className="btn-neon" style={{ padding: "8px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <ArrowLeft size={20} />
                 </button>
                 <h1 className="text-gradient" style={{ fontSize: "2.5rem", margin: 0 }}>Messages</h1>

@@ -4,7 +4,8 @@ import {
     getConversations,
     getMessages,
     sendMessage,
-    resetAllChats
+    resetAllChats,
+    findOrCreateConversation
 } from '../controllers/chatController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -20,6 +21,9 @@ const chatLimiter = rateLimit({
 
 router.route('/conversations')
     .get(protect, getConversations);
+
+router.route('/conversations/find-or-create')
+    .post(protect, findOrCreateConversation);
 
 router.route('/:conversationId/messages')
     .get(protect, getMessages)

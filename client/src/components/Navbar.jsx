@@ -67,9 +67,8 @@ const AppNavbar = () => {
         if (!socket || !user) return;
 
         const handleNewMessage = (data) => {
-            // Only increment if we aren't already on the chat page (which handles its own unread)
-            // Actually, increment anyway to keep navbar in sync, or let chat page reset it.
-            if (location.pathname !== '/chat') {
+            // If we are not currently in the chat page, accumulate unread messages
+            if (location.pathname !== '/dormdash/messages') {
                 setUnreadMessages(prev => prev + 1);
             }
         };
@@ -131,12 +130,8 @@ const AppNavbar = () => {
                                     <span className="nav-text">Community</span>
                                     <div className="nav-indicator"></div>
                                 </Link>
-                                <Link className={`nav-link ${isActive('/dormdash')}`} to="/dormdash">
+                                <Link className={`nav-link ${isActive('/dormdash') || location.pathname.startsWith('/dormdash') ? 'active' : ''}`} to="/dormdash" style={{ position: 'relative' }}>
                                     <span className="nav-text">DormDash</span>
-                                    <div className="nav-indicator"></div>
-                                </Link>
-                                <Link className={`nav-link ${isActive('/chat')}`} to="/chat" style={{ position: 'relative' }}>
-                                    <span className="nav-text">Messages</span>
                                     {unreadMessages > 0 && (
                                         <span style={{ position: 'absolute', top: 2, right: -6, width: 10, height: 10, borderRadius: 6, background: 'var(--accent-cyan)' }} />
                                     )}
@@ -185,8 +180,7 @@ const AppNavbar = () => {
                             <Link className="mobile-link" to="/events">Events</Link>
                             <Link className="mobile-link" to="/marketplace">Marketplace</Link>
                             <Link className="mobile-link" to="/community">Community</Link>
-                            <Link className="mobile-link" to="/dormdash">DormDash</Link>
-                            <Link className="mobile-link" to="/chat">Messages</Link>
+                            <Link className="mobile-link" to="/dormdash">DormDash {unreadMessages > 0 ? "💬" : ""}</Link>
 
                             {user.role === 'admin' && (
                                 <Link className="mobile-link" to="/admin" style={{ color: "var(--accent-pink)" }}>Admin Area</Link>

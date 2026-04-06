@@ -11,6 +11,10 @@ const handleError = (res, err) => {
 // POST /notices
 export const createNotice = async (req, res) => {
     try {
+        if (req.user.role !== "admin") {
+            return res.status(403).json({ success: false, message: "Only administrators and official personnel can post campus notices" });
+        }
+
         const notice = await Notice.create({
             postedBy:   req.user._id,
             posterRole: req.user.role,

@@ -1,18 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { getSkill, matchSkill, completeSkill, cancelSkill, submitSkillReview, getSkillReview } from "../../api/communityApi";
 import { useAuth } from "../../context/AuthContext";
 import ReviewModal from "../../components/shared/ReviewModal";
 import ReviewReveal from "../../components/community/ReviewReveal";
 import ChargeDisplay from "../../components/shared/ChargeDisplay";
+import { findOrCreateConversation } from "../../api/chatApi";
 import { toast } from "react-toastify";
 
 const SkillDetail = () => {
     const { id } = useParams();
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [skill, setSkill]       = useState(null);
     const [showReview, setShowReview] = useState(false);
     const [review, setReview]     = useState(null);
+    const [chatLoading, setChatLoading] = useState(false);
+    const [scheduleNote, setScheduleNote] = useState("");
 
     const load = async () => { try { const r = await getSkill(id); setSkill(r.data.data); } catch (_) {} };
     const loadReview = async () => { try { const r = await getSkillReview(id); setReview(r.data); } catch (_) {} };
@@ -26,6 +30,23 @@ const SkillDetail = () => {
     const isParty  = userId === posterId || userId === matchId;
 
     const action = async (fn, msg) => { try { await fn(); toast.success(msg); load(); } catch (err) { toast.error(err.response?.data?.message || "Failed"); } };
+
+    const handleMessage = async () => {
+        const partnerId = userId === posterId ? matchId : posterId;
+        if (!partnerId) return;
+        setChatLoading(true);
+        try {
+            const res = await findOrCreateConversation({
+                participantId: partnerId,
+                referenceId: id,
+                threadModel: "SkillExchange",
+            });
+            navigate("/dormdash/messages", { state: { conversationId: res.data._id, threadType: "skill" } });
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Could not open chat");
+        }
+        setChatLoading(false);
+    };
 
     return (
         <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>
@@ -64,6 +85,15 @@ const SkillDetail = () => {
                                     style={{ padding: "11px 22px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", color: "var(--text-muted)", cursor: "pointer" }}>
                                     Cancel
                                 </button>
+                                {/* Message Partner */}
+                                <button
+                                    id="skills-message-btn"
+                                    onClick={handleMessage}
+                                    disabled={chatLoading}
+                                    style={{ padding: "11px 22px", background: "rgba(0,212,255,0.12)", border: "1px solid rgba(0,212,255,0.3)", borderRadius: "10px", color: "#00d4ff", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                                >
+                                    💬 {chatLoading ? "Opening…" : "Message Partner"}
+                                </button>
                             </>
                         )}
                         {skill.status === "completed" && isParty && (
@@ -77,6 +107,28 @@ const SkillDetail = () => {
 
                 {review && !review.waiting && <ReviewReveal giverReview={review.data?.giverReview} takerReview={review.data?.takerReview} />}
                 {review?.waiting && <p style={{ color: "var(--text-muted)", textAlign: "center", fontSize: "0.87rem" }}>⏳ Waiting for both reviews…</p>}
+
+                {/* Schedule coordination panel (matched only) */}
+                {skill.status === "matched" && isParty && (
+                    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: "14px", padding: "22px", marginTop: "0" }}>
+                        <p style={{ color: "#ffd700", fontWeight: "700", fontSize: "0.9rem", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                            📅 Schedule Coordination
+                        </p>
+                        <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "14px" }}>
+                            Use the Message button above to agree on a location and time. You can paste your schedule details here as a note.
+                        </p>
+                        <textarea
+                            value={scheduleNote}
+                            onChange={e => setScheduleNote(e.target.value)}
+                            placeholder="e.g. Meet at Library Block A, Saturday 3 PM"
+                            rows={2}
+                            style={{ width: "100%", padding: "12px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: "10px", color: "#fff", resize: "vertical", boxSizing: "border-box", fontSize: "0.9rem" }}
+                        />
+                        <p style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginTop: "8px", marginBottom: 0 }}>
+                            💡 This note is local-only. Use 💬 Message Partner to share it with your partner.
+                        </p>
+                    </div>
+                )}
             </div>
             {showReview && <ReviewModal title="Rate this skill exchange" onClose={() => setShowReview(false)} onSubmit={async (d) => { await submitSkillReview(id, d); toast.success("Review submitted!"); setShowReview(false); loadReview(); }} />}
         </div>
