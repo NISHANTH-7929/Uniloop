@@ -1,0 +1,428 @@
+﻿
+> client@0.0.0 lint
+> eslint .
+
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\components\ErrorBoundary.jsx
+  9:37  error  'error' is defined but never used  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\components\Navbar.jsx
+  29:9   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  27 |     // Close mobile menu when route changes
+  28 |     useEffect(() => {
+> 29 |         setMobileMenuOpen(false);
+     |         ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  30 |     }, [location.pathname]);
+  31 |
+  32 |     useEffect(() => {  react-hooks/set-state-in-effect
+  69:35  error  'data' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\components\community\AnswerItem.jsx
+  5:65  error  'questionId' is defined but never used  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\components\community\NoticeCard.jsx
+  5:55  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+  3 | const NoticeCard = ({ notice, onClick }) => {
+  4 |     const msLeft = useMemo(() => {
+> 5 |         return new Date(notice.expiresAt).getTime() - Date.now();
+    |                                                       ^^^^^^^^^^ Cannot call impure function
+  6 |     }, [notice.expiresAt]);
+  7 |
+  8 |     const daysLeft = Math.max(0, Math.floor(msLeft / (1000 * 60 * 60 * 24)));  react-hooks/purity
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\components\dormdash\OTPDisplay.jsx
+  3:28  error  'expiresAt' is defined but never used  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\components\dormdash\OrderCard.jsx
+  5:29  error  'isDasherFeed' is defined but never used  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\components\dormdash\OrderStatusStepper.jsx
+  34:15  error  'isUpcoming' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  39:13  error  'textShadow' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\context\AuthContext.jsx
+   8:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  47:26  error  'err' is defined but never used                                                                                                 no-unused-vars
+  58:26  error  'err' is defined but never used                                                                                                 no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\context\CommunityContext.jsx
+  61:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\context\DormDashContext.jsx
+  53:7   error  Unexpected lexical declaration in case block                                                                                    no-case-declarations
+  99:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\context\SocketContext.jsx
+  25:9   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  23 |
+  24 |         socketRef.current = socketInstance;
+> 25 |         setSocket(socketInstance);
+     |         ^^^^^^^^^ Avoid calling setState() directly within an effect
+  26 |
+  27 |         socketInstance.on('connect', () => {
+  28 |             console.log("[SocketContext] Global socket connected:", socketInstance.id);  react-hooks/set-state-in-effect
+  63:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                react-refresh/only-export-components
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\hooks\useSOSListener.js
+  32:42  error  'data' is defined but never used  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\AdminDashboard.jsx
+    3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u             no-unused-vars
+   28:19  error  'setStats' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+   74:18  error  'error' is defined but never used                                                         no-unused-vars
+  106:18  error  'error' is defined but never used                                                         no-unused-vars
+  119:22  error  'error' is defined but never used                                                         no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\AuthPage.jsx
+  5:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\Chat.jsx
+   4:10  error    'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                          no-unused-vars
+  25:11  error    'scrollContainerRef' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                     no-unused-vars
+  27:34  error    'setTargetConversationId' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                no-unused-vars
+  28:12  error    'targetThreadType' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                       no-unused-vars
+  28:30  error    'setTargetThreadType' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                    no-unused-vars
+  33:8   warning  React Hook useEffect has a missing dependency: 'loadConversations'. Either include it or remove the dependency array                   react-hooks/exhaustive-deps
+  99:8   warning  React Hook useEffect has missing dependencies: 'loadConversations' and 'user._id'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\Dashboard.jsx
+    3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                     no-unused-vars
+  157:11  error  'punctualityScore' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\EventDetails.jsx
+    3:10  error    'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                     no-unused-vars
+  118:8   warning  React Hook useEffect has a missing dependency: 'loadEventData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  125:18  error    'err' is defined but never used                                                                                   no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\Events.jsx
+    2:10   error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                            no-unused-vars
+   13:26   error  'setHasNewEvents' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u          no-unused-vars
+   16:12   error  'myTickets' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                no-unused-vars
+   29:34   error  'setSelectedEventDetails' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+   45:22   error  'e' is defined but never used                                                                            no-unused-vars
+   45:25   error  Empty block statement                                                                                    no-empty
+   66:88   error  'e' is defined but never used                                                                            no-unused-vars
+   66:91   error  Empty block statement                                                                                    no-empty
+   68:101  error  'e' is defined but never used                                                                            no-unused-vars
+   68:104  error  Empty block statement                                                                                    no-empty
+   69:18   error  'error' is defined but never used                                                                        no-unused-vars
+  121:15   error  'isUpcoming' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u               no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\ForgotPassword.jsx
+  4:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\Marketplace.jsx
+  171:8  warning  React Hook useEffect has missing dependencies: 'activeConvo', 'myListings.length', and 'myTrades.length'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\NotFound.jsx
+  28:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  26 |
+  27 |   useEffect(() => {
+> 28 |     setQuoteIdx(Math.floor(Math.random() * QUOTES.length));
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  29 |   }, []);
+  30 |
+  31 |   const changeQuote = () => {  react-hooks/set-state-in-effect
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\Notifications.jsx
+   3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u         no-unused-vars
+  12:13  error  'user' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\Organizer.jsx
+    2:10  error    'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                    no-unused-vars
+    4:36  error    'updateEvent' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                               no-unused-vars
+    4:49  error    'deleteEvent' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                               no-unused-vars
+   36:12  error    'loadingAttendees' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                 no-unused-vars
+   38:12  error    'loadingRecruitment' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u               no-unused-vars
+   43:12  error    'loadingVolunteers' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                no-unused-vars
+   47:12  error    'isEditing' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                        no-unused-vars
+   47:23  error    'setIsEditing' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                     no-unused-vars
+   48:12  error    'editingEventId' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                   no-unused-vars
+   48:28  error    'setEditingEventId' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                no-unused-vars
+   57:8   warning  React Hook useEffect has a missing dependency: 'loadMyEvents'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   68:18  error    'error' is defined but never used                                                                                no-unused-vars
+  129:18  error    'error' is defined but never used                                                                                no-unused-vars
+  143:18  error    'error' is defined but never used                                                                                no-unused-vars
+  161:18  error    'err' is defined but never used                                                                                  no-unused-vars
+  172:18  error    'err' is defined but never used                                                                                  no-unused-vars
+  184:18  error    'err' is defined but never used                                                                                  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\ResetPassword.jsx
+  4:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\Scanner.jsx
+   6:10  error    'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          no-unused-vars
+  11:12  error    'eventDetails' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           no-unused-vars
+  30:21  error    Error: Cannot access variable before it is declared
+
+`initScanner` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  28 |                     toast.warning("Scanning is disabled for finished events.");
+  29 |                 } else {
+> 30 |                     initScanner();
+     |                     ^^^^^^^^^^^ `initScanner` accessed before it is declared
+  31 |                 }
+  32 |             })
+  33 |             .catch(() => toast.error("Failed to load event data."));
+
+  45 |     }, [eventId]);
+  46 |
+> 47 |     const initScanner = () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 48 |         setIsScanning(true);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 49 |         setScannedTicket(null);
+     ΓÇª
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 68 |         }, 100);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 69 |     };
+     | ^^^^^^^ `initScanner` is declared here
+  70 |
+  71 |     const onScanSuccess = async (decodedText) => {
+  72 |         if (scannerRef.current) {  react-hooks/immutability
+  45:8   warning  React Hook useEffect has a missing dependency: 'initScanner'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+  58:60  error    'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          no-unused-vars
+  91:26  error    'error' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\SubeventDetails.jsx
+    3:10  error    'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                     no-unused-vars
+  112:8   warning  React Hook useEffect has a missing dependency: 'loadEventData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  120:18  error    'err' is defined but never used                                                                                   no-unused-vars
+  249:11  error    'isPartOrganizer' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                   no-unused-vars
+  257:11  error    'isOrganizer' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                       no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\VerificationSent.jsx
+  3:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\VerifyEmail.jsx
+  1:17  error  'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  5:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u     no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\ViewTickets.jsx
+   2:10  error    'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                    no-unused-vars
+  17:13  error    'user' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                             no-unused-vars
+  25:8   warning  React Hook useEffect has a missing dependency: 'fetchTickets'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  32:18  error    'err' is defined but never used                                                                                  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\VolunteerDetails.jsx
+  5:10  error  'motion' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\community\ComplaintDetail.jsx
+  16:103  error    '_' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     no-unused-vars
+  16:106  error    Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             no-empty
+  17:23   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  15 |
+  16 |     const load = async () => { try { const r = await getComplaint(id); setItem(r.data.data); } catch (_) {} };
+> 17 |     useEffect(() => { load(); }, [id]);
+     |                       ^^^^ Avoid calling setState() directly within an effect
+  18 |
+  19 |     if (!item) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>LoadingΓÇª</div>;
+  20 |  react-hooks/set-state-in-effect
+  17:34   warning  React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\community\EmergencyDetail.jsx
+  19:80  error    '_' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-unused-vars
+  19:83  error    Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          no-empty
+  21:23  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  19 |         try { const r = await getEmergency(id); setItem(r.data.data); } catch (_) {}
+  20 |     };
+> 21 |     useEffect(() => { load(); }, [id]);
+     |                       ^^^^ Avoid calling setState() directly within an effect
+  22 |
+  23 |     if (!item) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>LoadingΓÇª</div>;
+  24 |  react-hooks/set-state-in-effect
+  21:34  warning  React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react-hooks/exhaustive-deps
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\community\LostFoundDetail.jsx
+  39:18  error    '_' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              no-unused-vars
+  39:21  error    Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      no-empty
+  47:18  error    '_' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              no-unused-vars
+  47:21  error    Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      no-empty
+  50:23  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  48 |     };
+  49 |
+> 50 |     useEffect(() => { load(); loadReview(); }, [id]);
+     |                       ^^^^ Avoid calling setState() directly within an effect
+  51 |
+  52 |     const userId    = user?._id || user?.id;
+  53 |     const reporterId = item?.reporter?._id || item?.reporter;  react-hooks/set-state-in-effect
+  50:48  warning  React Hook useEffect has missing dependencies: 'load' and 'loadReview'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 react-hooks/exhaustive-deps
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\community\LostFoundFeed.jsx
+  31:23  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  29 |     };
+  30 |
+> 31 |     useEffect(() => { load(typeFilter); }, [typeFilter]);
+     |                       ^^^^ Avoid calling setState() directly within an effect
+  32 |
+  33 |     return (
+  34 |         <div className="community-page">  react-hooks/set-state-in-effect
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\community\NoticeDetail.jsx
+  34:75  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+  32 |
+  33 |     const ROLE_COLORS = { admin: "#ff6464", dept: "#00d4ff", club: "#a855f7", student: "#00ff88" };
+> 34 |     const daysLeft = Math.max(0, Math.floor((new Date(notice.expiresAt) - Date.now()) / (1000 * 60 * 60 * 24)));
+     |                                                                           ^^^^^^^^^^ Cannot call impure function
+  35 |
+  36 |     return (
+  37 |         <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "100px 20px 40px" }}>  react-hooks/purity
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\community\QuestionDetail.jsx
+   3:63   error    'deleteAnswer' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                no-unused-vars
+  15:104  error    '_' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      no-unused-vars
+  15:107  error    Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              no-empty
+  16:23   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  14 |
+  15 |     const load = async () => { try { const r = await getQAQuestion(id); setPost(r.data.data); } catch (_) {} };
+> 16 |     useEffect(() => { load(); }, [id]);
+     |                       ^^^^ Avoid calling setState() directly within an effect
+  17 |
+  18 |     if (!post) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>LoadingΓÇª</div>;
+  19 |  react-hooks/set-state-in-effect
+  16:34   warning  React Hook useEffect has a missing dependency: 'load'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            react-hooks/exhaustive-deps
+  21:11   error    'isAuthor' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\community\SkillDetail.jsx
+  21:100  error    '_' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     no-unused-vars
+  21:103  error    Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             no-empty
+  22:108  error    '_' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     no-unused-vars
+  22:111  error    Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             no-empty
+  23:23   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  21 |     const load = async () => { try { const r = await getSkill(id); setSkill(r.data.data); } catch (_) {} };
+  22 |     const loadReview = async () => { try { const r = await getSkillReview(id); setReview(r.data); } catch (_) {} };
+> 23 |     useEffect(() => { load(); loadReview(); }, [id]);
+     |                       ^^^^ Avoid calling setState() directly within an effect
+  24 |
+  25 |     if (!skill) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>LoadingΓÇª</div>;
+  26 |  react-hooks/set-state-in-effect
+  23:48   warning  React Hook useEffect has missing dependencies: 'load' and 'loadReview'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react-hooks/exhaustive-deps
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\community\TutoringDetail.jsx
+  22:89  error    '_' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         no-unused-vars
+  22:92  error    Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 no-empty
+  25:82  error    '_' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         no-unused-vars
+  25:85  error    Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 no-empty
+  28:23  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  26 |     };
+  27 |
+> 28 |     useEffect(() => { load(); loadReview(); }, [id]);
+     |                       ^^^^ Avoid calling setState() directly within an effect
+  29 |     if (!session) return <div style={{ minHeight: "100vh", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>LoadingΓÇª</div>;
+  30 |
+  31 |     const userId  = user?._id || user?.id;  react-hooks/set-state-in-effect
+  28:48  warning  React Hook useEffect has missing dependencies: 'load' and 'loadReview'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            react-hooks/exhaustive-deps
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\community\TutoringFeed.jsx
+   9:20  error  'setFilter' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          no-unused-vars
+  13:9   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  11 |
+  12 |     useEffect(() => {
+> 13 |         setLoading(true);
+     |         ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  14 |         getTutoringSessions({ status: filter }).then(r => setSessions(r.data.data)).catch(() => {}).finally(() => setLoading(false));
+  15 |     }, [filter]);
+  16 |  react-hooks/set-state-in-effect
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\dormdash\EarningsLog.jsx
+  32:6  warning  React Hook useEffect has a missing dependency: 'fetchEarningsAndDeliveries'. Either include it or remove the dependency array                                         react-hooks/exhaustive-deps
+  42:6  warning  React Hook useEffect has missing dependencies: 'activeTab', 'ongoingOrders.length', and 'requestedOrders.length'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\dormdash\GroupOrderForm.jsx
+  66:14  error  'error' is defined but never used  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\dormdash\OrderDetail.jsx
+  12:31  error  'dispatch' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u      no-unused-vars
+  27:16  error  'err' is defined but never used                                                               no-unused-vars
+  90:9   error  'theirReview' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u   no-unused-vars
+  91:9   error  'bothRevealed' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\nisha\OneDrive\Desktop\UNILOOP UPDATES\UNILOOP\client\src\pages\dormdash\PublicDashProfile.jsx
+  17:16  error  'err' is defined but never used  no-unused-vars
+
+Γ£û 134 problems (118 errors, 16 warnings)
+

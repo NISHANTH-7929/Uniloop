@@ -8,6 +8,17 @@ import Review from '../models/Review.js';
 import Notification from '../models/Notification.js';
 import sendEmail from '../utils/sendEmail.js';
 
+// Helper: Convert trade type to human-readable message
+const getTradeTypeDisplayText = (type) => {
+    const map = {
+        'buy': 'purchase',
+        'sell': 'selling',
+        'borrow': 'borrow',
+        'rent': 'rental'
+    };
+    return map[type] || type;
+};
+
 // @desc    Create a trade request
 // @route   POST /api/trades
 // @access  Private
@@ -63,18 +74,20 @@ export const createTradeRequest = async (req, res) => {
                 if (meetup) meetupText = `${meetup.name} (${meetup.campus})`;
             }
 
+            const displayType = getTradeTypeDisplayText(type);
+
             const emailMessage = `
                 <h2>New Trade Request!</h2>
-                <p>You have received a new ${type} request for your listing: <b>${listing.title}</b>.</p>
+                <p>You have received a new ${displayType} request for your listing: <b>${listing.title}</b>.</p>
                 <p><b>Proposed Meetup Location:</b> ${meetupText}</p>
-                ${proposedPrice ? `<p><b>Proposed Price:</b> $${proposedPrice}</p>` : ''}
+                ${proposedPrice ? `<p><b>Proposed Price:</b> ₹${proposedPrice}</p>` : ''}
                 <p><b>Message:</b> "${message || 'No additional message'}"</p>
                 <p>Log in to your UniLoop Dashboard to accept or reject this request!</p>
             `;
 
             await sendEmail({
                 to: owner.email,
-                subject: 'New Uniloop Trade Request',
+                subject: 'New UniLoop Trade Request',
                 text: emailMessage
             });
         } catch (err) {
@@ -83,11 +96,12 @@ export const createTradeRequest = async (req, res) => {
 
         // In-App Notification
         try {
+            const displayType = getTradeTypeDisplayText(type);
             await Notification.create({
                 recipient: listing.seller,
                 type: 'trade_request',
                 title: 'New Trade Request',
-                message: `You have received a new ${type} request for: ${listing.title}`,
+                message: `You have received a new ${displayType} request for: ${listing.title}`,
                 relatedId: tradeRequest._id
             });
         } catch (err) {
@@ -222,11 +236,13 @@ export const respondToTradeRequest = async (req, res) => {
                     if (meetup) meetupText = `${meetup.name} (${meetup.campus})`;
                 }
 
+                const displayType = getTradeTypeDisplayText(tradeRequest.type);
+
                 const emailMessage = `
                     <h2>Trade Request Accepted!</h2>
-                    <p>Your ${tradeRequest.type} request for <b>${listing.title}</b> has been accepted!</p>
+                    <p>Your ${displayType} request for <b>${listing.title}</b> has been accepted!</p>
                     <p><b>Meetup Location:</b> ${meetupText}</p>
-                    <p>You can now open your Uniloop Dashboard to chat with the owner and coordinate the exchange.</p>
+                    <p>You can now open your UniLoop Dashboard to chat with the owner and coordinate the exchange.</p>
                 `;
 
                 await sendEmail({
@@ -294,6 +310,37 @@ export const completeTradeRequest = async (req, res) => {
         await User.findByIdAndUpdate(tradeRequest.owner, { $inc: { totalCompletedTrades: 1 } });
         await User.findByIdAndUpdate(tradeRequest.requester, { $inc: { totalCompletedTrades: 1 } });
 
+        res.status(200).json(tradeRequest);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Cancel a pending trade request (requester only)
+// @route   PUT /api/trades/:id/cancel
+// @access  Private
+export const cancelTradeRequest = async (req, res) => {
+    try {
+        const tradeRequest = await TradeRequest.findById(req.params.id);
+        if (!tradeRequest) return res.status(404).json({ message: 'Trade request not found' });
+        if (tradeRequest.requester.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Only the requester can cancel this request' });
+        }
+        if (tradeRequest.status !== 'pending') {
+            return res.status(400).json({ message: 'Only pending requests can be cancelled' });
+        }
+        tradeRequest.status = 'cancelled';
+        await tradeRequest.save();
+        try {
+            await Notification.create({
+                recipient: tradeRequest.owner,
+                type: 'info',
+                title: 'Trade Request Cancelled',
+                message: `A trade request for your listing was cancelled by the buyer.`,
+                relatedId: tradeRequest._id
+            });
+        } catch (_) {}
         res.status(200).json(tradeRequest);
     } catch (error) {
         console.error(error);

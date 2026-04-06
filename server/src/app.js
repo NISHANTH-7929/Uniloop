@@ -66,7 +66,7 @@ app.use("/api/community", communityRoutes);
 app.use("/api/dormdash", dormdashRoutes);
 
 app.get("/", (req, res) => {
-    res.status(200).json({ message: "Uniloop Backend running..." });
+    res.status(200).json({ message: "UniLoop Backend running..." });
 })
 
 export default app;

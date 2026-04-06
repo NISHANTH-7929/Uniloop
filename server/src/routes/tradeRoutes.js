@@ -3,7 +3,8 @@ import {
     createTradeRequest,
     getTradeRequests,
     respondToTradeRequest,
-    completeTradeRequest
+    completeTradeRequest,
+    cancelTradeRequest
 } from '../controllers/tradeController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -18,5 +19,8 @@ router.route('/:id/respond')
 
 router.route('/:id/complete')
     .put(protect, completeTradeRequest);
+
+router.route('/:id/cancel')
+    .put(protect, cancelTradeRequest);
 
 export default router;
