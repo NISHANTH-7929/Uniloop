@@ -54,20 +54,23 @@ const Events = () => {
             if (initial) setLoading(true);
             else setIsRefreshing(true);
 
-            const [eventsRes, ticketsRes] = await Promise.all([
-                fetchEvents(),
-                getMyTickets()
-            ]);
+            const eventsRes = await fetchEvents();
+            let ticketsRes;
+            try {
+                ticketsRes = await getMyTickets();
+            } catch (ticketErr) {
+                ticketsRes = { data: [] };
+            }
 
-            const data = eventsRes.data;
+            const data = eventsRes.data || [];
             setEvents(data);
-            setMyTickets(ticketsRes.data);
+            setMyTickets(ticketsRes.data || []);
             // Cache events locally to show immediately on next load
             try { localStorage.setItem('cachedEvents', JSON.stringify(data)); } catch (e) { }
             // Mark events as seen shortly after load to allow dot to show briefly
             setTimeout(() => { try { localStorage.setItem('seenEventsCount', data.length); } catch (e) { } }, 1500);
         } catch (error) {
-            toast.error("Failed to load events");
+            toast.error(error.response?.data?.message || "Failed to load events");
         } finally {
             setLoading(false);
             setIsRefreshing(false);

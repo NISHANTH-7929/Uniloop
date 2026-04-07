@@ -80,6 +80,59 @@ p {
   margin: 0 auto;
 }
 
+.community-page {
+  width: 100%;
+  padding: 20px 0;
+}
+
+.community-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.community-container > * {
+  width: 100%;
+}
+
+.community-page h1,
+.community-page h2,
+.community-page h3 {
+  color: #FFFFFF;
+}
+
+.community-page p,
+.community-page span,
+.community-page label {
+  color: var(--text-secondary);
+}
+
+.community-input {
+  width: 100%;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-size: 1rem;
+  transition: var(--transition);
+}
+
+.community-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+}
+
+.community-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+}
+
 /* Components */
 
 /* Image-style Cards */
@@ -163,8 +216,8 @@ p {
 .neon-input, .community-input {
   width: 100%;
   padding: 16px 20px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--radius-md);
   color: #fff;
   font-size: 1rem;
@@ -172,9 +225,10 @@ p {
   outline: none;
 }
 
-.neon-input:focus {
+.neon-input:focus,
+.community-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16);
 }
 
 /* Navigation System */

@@ -82,12 +82,14 @@ const CommunityHome = () => {
                             onClick={() => navigate(mod.path)}
                             className="card"
                             style={{
-                                padding: "40px 32px",
-                                cursor: "pointer", 
+                                padding: "36px 28px",
+                                minHeight: "260px",
+                                cursor: "pointer",
                                 textAlign: "center",
                                 display: "flex",
                                 flexDirection: "column",
-                                alignItems: "center"
+                                alignItems: "center",
+                                justifyContent: "space-between"
                             }}
                         >
                             <div style={{ fontSize: "3rem", marginBottom: "24px" }}>{mod.icon}</div>
