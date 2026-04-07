@@ -4,19 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import { getNotifications } from "../api/events";
 import { fetchConversations } from "../api/chatApi";
 import { useSocket } from "../context/SocketContext";
-import { 
-    LayoutDashboard, 
-    Bell, 
-    CalendarDays, 
-    ShoppingBag, 
-    Users, 
-    UtensilsCrossed, 
-    ShieldAlert, 
-    LogOut, 
-    Menu, 
-    X, 
-    Zap 
-} from "lucide-react";
 import "./Navbar.css";
 
 const AppNavbar = () => {
@@ -26,18 +13,43 @@ const AppNavbar = () => {
     const [scrolled, setScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [unreadMessages, setUnreadMessages] = useState(0);
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setScrolled(window.scrollY > 20);
+        };
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
+
+    // Close mobile menu when route changes
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [location.pathname]);
+
     useEffect(() => {
         let mounted = true;
         
         const loadCounts = async () => {
             if (!user) {
                 setUnreadCount(0);
+                setUnreadMessages(0);
                 return;
             }
             try {
+                // Notifications
                 const notifRes = await getNotifications();
                 if (mounted) {
                     setUnreadCount(notifRes.data.filter(n => !n.isRead).length);
+                }
+
+                // Messages
+                const chatRes = await fetchConversations();
+                if (mounted) {
+                    const totalUnread = chatRes.data.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+                    setUnreadMessages(totalUnread);
                 }
             } catch (err) {
                 console.error('Failed to fetch counts for navbar', err);
@@ -45,90 +57,140 @@ const AppNavbar = () => {
         };
 
         loadCounts();
+        
+        // Refresh when location changes (in case user marks as read on page)
         return () => { mounted = false; };
     }, [user, location.pathname]);
+
+    // Socket listener for global unread messages
+    useEffect(() => {
+        if (!socket || !user) return;
+
+        const handleNewMessage = (data) => {
+            // If we are not currently in the chat page, accumulate unread messages
+            if (location.pathname !== '/dormdash/messages') {
+                setUnreadMessages(prev => prev + 1);
+            }
+        };
+
+        socket.on("receive_message", handleNewMessage);
+        return () => socket.off("receive_message", handleNewMessage);
+    }, [socket, user, location.pathname]);
 
     const handleLogout = async () => {
         await logout();
         navigate("/auth", { replace: true });
     };
 
-    const isActive = (path) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path)) ? "active" : "";
+    const isActive = (path) => location.pathname === path ? "active" : "";
 
     return (
         <header className={`navbar-wrapper ${scrolled ? 'scrolled' : ''}`}>
-            <nav className="navbar-container">
-                {/* Logo */}
-                <Link className="navbar-brand" to="/">
-                    <Zap size={28} className="text-gradient" fill="currentColor" />
-                    <span className="brand-text">UniLoop</span>
-                </Link>
+            <nav className="navbar-glass">
+                <div className="navbar-container">
 
-                {/* Desktop Menu */}
-                <div className="navbar-links desktop-only">
-                    {!user ? (
-                        <Link className={`nav-link ${isActive('/auth')}`} to="/auth">
-                            Login / Register
-                        </Link>
-                    ) : (
-                        <>
-                            <Link className={`nav-link ${isActive('/dashboard')}`} to="/dashboard">
-                                <LayoutDashboard size={18} />
-                                <span>Dashboard</span>
+                    {/* Logo */}
+                    <Link className="navbar-brand" to="/">
+                        <div className="brand-icon">
+                            <div className="brand-dot"></div>
+                            <div className="brand-ring"></div>
+                        </div>
+                        <span className="brand-text text-gradient">UniLoop</span>
+                    </Link>
+
+                    {/* Desktop Menu */}
+                    <div className="navbar-links desktop-only">
+                        {!user ? (
+                            <Link className={`nav-link ${isActive('/auth')}`} to="/auth">
+                                <span className="nav-text">Login / Register</span>
+                                <div className="nav-indicator"></div>
                             </Link>
+                        ) : (
+                            <>
+                                <Link className={`nav-link ${isActive('/dashboard')}`} to="/dashboard">
+                                    <span className="nav-text">Dashboard</span>
+                                    <div className="nav-indicator"></div>
+                                </Link>
+                                <Link className={`nav-link ${isActive('/notifications')}`} to="/notifications" style={{ position: 'relative' }}>
+                                    <span className="nav-text">Notifications</span>
+                                    {unreadCount > 0 && (
+                                        <span style={{ position: 'absolute', top: 2, right: -6, width: 10, height: 10, borderRadius: 6, background: 'var(--accent-pink)' }} />
+                                    )}
+                                    <div className="nav-indicator"></div>
+                                </Link>
+                                <Link className={`nav-link ${isActive('/events')}`} to="/events">
+                                    <span className="nav-text">Events</span>
+                                    <div className="nav-indicator"></div>
+                                </Link>
+                                <Link className={`nav-link ${isActive('/marketplace')}`} to="/marketplace">
+                                    <span className="nav-text">Marketplace</span>
+                                    <div className="nav-indicator"></div>
+                                </Link>
+                                <Link className={`nav-link ${location.pathname.startsWith('/community') ? 'active' : ''}`} to="/community">
+                                    <span className="nav-text">Community</span>
+                                    <div className="nav-indicator"></div>
+                                </Link>
+                                <Link className={`nav-link ${isActive('/dormdash') || location.pathname.startsWith('/dormdash') ? 'active' : ''}`} to="/dormdash" style={{ position: 'relative' }}>
+                                    <span className="nav-text">DormDash</span>
+                                    {unreadMessages > 0 && (
+                                        <span style={{ position: 'absolute', top: 2, right: -6, width: 10, height: 10, borderRadius: 6, background: 'var(--accent-cyan)' }} />
+                                    )}
+                                    <div className="nav-indicator"></div>
+                                </Link>
 
-                            <Link className={`nav-link ${isActive('/events')}`} to="/events">
-                                <CalendarDays size={18} />
-                                <span>Events</span>
-                            </Link>
 
-                            <Link className={`nav-link ${isActive('/marketplace')}`} to="/marketplace">
-                                <ShoppingBag size={18} />
-                                <span>Marketplace</span>
-                            </Link>
+                                {user.role === 'admin' && (
+                                    <Link className={`nav-link ${isActive('/admin')}`} to="/admin" style={{ color: 'var(--accent-pink)' }}>
+                                        <span className="nav-text">Admin Panel</span>
+                                        <div className="nav-indicator" style={{ background: 'var(--accent-pink)' }}></div>
+                                    </Link>
+                                )}
 
-                            <Link className={`nav-link ${isActive('/community')}`} to="/community">
-                                <Users size={18} />
-                                <span>Community</span>
-                            </Link>
+                                <div className="nav-divider"></div>
 
-                            <Link className={`nav-link ${isActive('/dormdash')}`} to="/dormdash">
-                                <UtensilsCrossed size={18} />
-                                <span>DormDash</span>
-                            </Link>
+                                <button className="btn-neon nav-logout-btn" onClick={handleLogout}>
+                                    Logout
+                                </button>
+                            </>
+                        )}
+                    </div>
 
-                            <div className="nav-divider"></div>
+                    {/* Mobile Menu Toggle */}
+                    <button
+                        className={`mobile-menu-btn ${mobileMenuOpen ? 'open' : ''} mobile-only`}
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        aria-label="Toggle menu"
+                    >
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
 
-                            <button className="nav-logout-btn" onClick={handleLogout}>
-                                <LogOut size={18} />
-                            </button>
-                        </>
-                    )}
                 </div>
-
-                {/* Mobile Menu Toggle */}
-                <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                    {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
-                </button>
             </nav>
 
             {/* Mobile Dropdown */}
             <div className={`mobile-dropdown ${mobileMenuOpen ? 'open' : ''}`}>
-                {!user ? (
-                    <Link className="mobile-link" to="/auth">Login / Register</Link>
-                ) : (
-                    <>
-                        <Link className="mobile-link" to="/dashboard">Dashboard</Link>
-                        <Link className="mobile-link" to="/events">Events</Link>
-                        <Link className="mobile-link" to="/marketplace">Marketplace</Link>
-                        <Link className="mobile-link" to="/community">Community</Link>
-                        <Link className="mobile-link" to="/dormdash">DormDash</Link>
-                        
-                        <button className="btn-neon mt-4 w-100" onClick={handleLogout} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444' }}>
-                            Logout
-                        </button>
-                    </>
-                )}
+                <div className="mobile-links">
+                    {!user ? (
+                        <Link className="mobile-link" to="/auth">Login / Register</Link>
+                    ) : (
+                        <>
+                            <Link className="mobile-link" to="/dashboard">Dashboard</Link>
+                            <Link className="mobile-link" to="/events">Events</Link>
+                            <Link className="mobile-link" to="/marketplace">Marketplace</Link>
+                            <Link className="mobile-link" to="/community">Community</Link>
+                            <Link className="mobile-link" to="/dormdash">DormDash {unreadMessages > 0 ? "💬" : ""}</Link>
+
+                            {user.role === 'admin' && (
+                                <Link className="mobile-link" to="/admin" style={{ color: "var(--accent-pink)" }}>Admin Area</Link>
+                            )}
+                            <button className="btn-neon mt-4 w-100" onClick={handleLogout}>
+                                Logout
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
         </header>
     );
