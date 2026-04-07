@@ -23,7 +23,7 @@ const tradeRequestSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['sell', 'rent', 'borrow'],
+        enum: ['buy', 'sell', 'rent', 'borrow'],
         required: true
     },
     proposedMeetup: {
