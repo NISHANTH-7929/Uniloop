@@ -150,46 +150,48 @@ const AdminDashboard = () => {
     }
 
     return (
-        <div className="page-wrapper container" style={{ maxWidth: "1200px" }}>
+        <div style={{ padding: "100px 20px 40px", maxWidth: "1200px", margin: "0 auto" }}>
             <motion.div
-                initial={{ opacity: 0, y: -10 }}
+                initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                style={{ marginBottom: "48px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "24px" }}
+                style={{ marginBottom: "40px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px" }}
             >
                 <div>
-                    <h1 className="text-gradient">Platform Administration</h1>
-                    <p style={{ fontSize: "1.1rem", margin: 0 }}>System-wide analytics, moderation, and role management.</p>
+                    <h1 className="text-gradient" style={{ fontSize: "3rem", margin: 0, display: "flex", alignItems: "center", gap: "15px" }}>
+                        <ShieldAlert size={40} color="var(--accent-pink)" /> Admin Overseer
+                    </h1>
+                    <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem", marginTop: "10px" }}>Global platform statistics, moderation queue, and role management.</p>
                 </div>
-                {/* System Maintenance */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    <button onClick={handleResetChats} className="btn-neon" style={{ background: "rgba(255, 179, 0, 0.05)", color: "var(--secondary)", border: "1px solid rgba(255, 179, 0, 0.2)" }}>
-                        Purge Chat Logs
+                {/* DANGER ZONE */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <button onClick={handleResetChats} className="btn-neon" style={{ background: "rgba(255,100,0,0.1)", color: "#ff8c00", borderColor: "rgba(255,100,0,0.3)", display: "flex", alignItems: "center", gap: "8px", justifyContent: "center" }}>
+                        <MessageSquareX size={16} /> WIPE ALL CHATS
                     </button>
-                    <button onClick={handleResetData} className="btn-neon" style={{ background: "rgba(239, 68, 68, 0.05)", color: "#EF4444", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
-                        Reset Platform Data
+                    <button onClick={handleResetData} className="btn-neon" style={{ background: "rgba(255,0,0,0.1)", color: "#ff4444", borderColor: "rgba(255,0,0,0.3)" }}>
+                        WIPE & RESET TEST DATA
                     </button>
                 </div>
             </motion.div>
 
             {/* Global Stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "24px", marginBottom: "48px" }}>
-                <div className="card" style={{ padding: "32px", borderTop: "4px solid var(--primary)" }}>
-                    <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-                        <Users size={16} /> Total Registered Users
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "24px", marginBottom: "40px" }}>
+                <div className="glass-panel" style={{ padding: "20px", borderTop: "4px solid var(--accent-cyan)" }}>
+                    <div style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <Users size={16} /> Total Loopers
                     </div>
-                    <div style={{ fontSize: "2.5rem", fontWeight: "bold" }}>{systemUsers.length > 0 ? systemUsers.length : stats.totalUsers}</div>
+                    <div style={{ fontSize: "2.5rem", fontWeight: "bold", color: "#fff" }}>{systemUsers.length > 0 ? systemUsers.length : stats.totalUsers}</div>
                 </div>
-                <div className="card" style={{ padding: "32px", borderTop: "4px solid var(--secondary)" }}>
-                    <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-                        <TrendingUp size={16} /> Market Activity
+                <div className="glass-panel" style={{ padding: "20px", borderTop: "4px solid var(--accent-purple)" }}>
+                    <div style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <TrendingUp size={16} /> Active Listings
                     </div>
-                    <div style={{ fontSize: "2.5rem", fontWeight: "bold" }}>{stats.activeListings}</div>
+                    <div style={{ fontSize: "2.5rem", fontWeight: "bold", color: "#fff" }}>{stats.activeListings}</div>
                 </div>
-                <div className="card" style={{ padding: "32px", borderTop: "4px solid #EF4444" }}>
-                    <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-                        <AlertTriangle size={16} /> Systematic Flags
+                <div className="glass-panel" style={{ padding: "20px", borderTop: "4px solid var(--accent-pink)" }}>
+                    <div style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <AlertTriangle size={16} /> Overdue Borrows
                     </div>
-                    <div style={{ fontSize: "2.5rem", fontWeight: "bold" }}>{stats.overdueBorrows}</div>
+                    <div style={{ fontSize: "2.5rem", fontWeight: "bold", color: "#fff" }}>{stats.overdueBorrows}</div>
                 </div>
             </div>
 
