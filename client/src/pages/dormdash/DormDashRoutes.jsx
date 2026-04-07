@@ -44,13 +44,12 @@ const DormDashLayout = ({ children }) => {
   const navigate = useNavigate();
 
   return (
-    <div style={{ padding: "100px 20px 40px", maxWidth: "1200px", margin: "0 auto", position: "relative" }}>
-      {/* UX Enhancement: Back to UniLoop button */}
-      <div style={{ marginBottom: "20px" }}>
+    <div className="page-wrapper container">
+      <div style={{ marginBottom: "32px" }}>
         <button 
           onClick={() => navigate('/')}
           className="btn-neon"
-          style={{ padding: "8px 16px", display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.9rem", color: "var(--text-secondary)", borderColor: "var(--border-glass)" }}
+          style={{ padding: "8px 16px", display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.9rem" }}
         >
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -59,7 +58,6 @@ const DormDashLayout = ({ children }) => {
         </button>
       </div>
       
-      {/* Wrap content in DormDashContext provider */}
       {children}
     </div>
   );

@@ -15,37 +15,37 @@ import { format } from "date-fns";
 /* ─── helpers ─── */
 const getListingBg = (type) => {
     switch (type) {
-        case 'sell':   return 'rgba(0,212,255,0.08)';
-        case 'rent':   return 'rgba(255,0,200,0.08)';
-        case 'borrow': return 'rgba(112,0,255,0.08)';
-        default:       return 'rgba(255,255,255,0.04)';
+        case 'sell':   return 'rgba(76, 175, 80, 0.1)';
+        case 'rent':   return 'rgba(255, 179, 0, 0.1)';
+        case 'borrow': return 'rgba(76, 175, 80, 0.1)';
+        default:       return 'rgba(255, 255, 255, 0.05)';
     }
 };
 const getListingColor = (type) => {
     switch (type) {
-        case 'sell':   return 'var(--accent-cyan)';
-        case 'rent':   return 'var(--accent-pink)';
-        case 'borrow': return 'var(--accent-purple)';
+        case 'sell':   return 'var(--primary)';
+        case 'rent':   return 'var(--secondary)';
+        case 'borrow': return 'var(--primary)';
         default:       return 'var(--text-secondary)';
     }
 };
 const statusBadge = (status) => {
     const map = {
-        available: { bg: 'rgba(0,255,136,0.15)', color: '#00ff88', label: 'Available' },
-        pending:   { bg: 'rgba(255,215,0,0.15)',  color: '#ffd700', label: 'Pending' },
-        completed: { bg: 'rgba(0,212,255,0.15)',   color: 'var(--accent-cyan)', label: 'Completed' },
-        expired:   { bg: 'rgba(255,68,68,0.15)',   color: '#ff4444', label: 'Expired' },
-        cancelled: { bg: 'rgba(255,68,68,0.15)',   color: '#ff4444', label: 'Cancelled' },
+        available: { bg: 'rgba(76, 175, 80, 0.15)', color: 'var(--primary)', label: 'Available' },
+        pending:   { bg: 'rgba(255, 179, 0, 0.15)',  color: 'var(--secondary)', label: 'Pending' },
+        completed: { bg: 'rgba(76, 175, 80, 0.15)',   color: 'var(--primary)', label: 'Completed' },
+        expired:   { bg: 'rgba(148, 163, 184, 0.15)',   color: 'var(--text-muted)', label: 'Expired' },
+        cancelled: { bg: 'rgba(239, 68, 68, 0.15)',   color: '#EF4444', label: 'Cancelled' },
     };
     return map[status] || { bg: 'rgba(255,255,255,0.1)', color: 'var(--text-muted)', label: status };
 };
 const tradeBadge = (status) => {
     const map = {
-        pending:   { bg: 'rgba(255,215,0,0.15)',  color: '#ffd700', label: '⏳ Pending' },
-        accepted:  { bg: 'rgba(0,255,136,0.15)',   color: '#00ff88', label: '✅ Accepted' },
-        rejected:  { bg: 'rgba(255,68,68,0.15)',   color: '#ff4444', label: '❌ Rejected' },
-        completed: { bg: 'rgba(0,212,255,0.15)',   color: 'var(--accent-cyan)', label: '🏁 Completed' },
-        cancelled: { bg: 'rgba(255,68,68,0.15)',   color: '#ff4444', label: '🚫 Cancelled' },
+        pending:   { bg: 'rgba(255, 179, 0, 0.15)',  color: 'var(--secondary)', label: 'Pending' },
+        accepted:  { bg: 'rgba(76, 175, 80, 0.15)',   color: 'var(--primary)', label: 'Accepted' },
+        rejected:  { bg: 'rgba(239, 68, 68, 0.15)',   color: '#EF4444', label: 'Rejected' },
+        completed: { bg: 'rgba(76, 175, 80, 0.15)',   color: 'var(--primary)', label: 'Completed' },
+        cancelled: { bg: 'rgba(239, 68, 68, 0.15)',   color: '#EF4444', label: 'Cancelled' },
     };
     return map[status] || { bg: 'rgba(255,255,255,0.1)', color: 'var(--text-muted)', label: status };
 };
@@ -477,7 +477,7 @@ const Marketplace = () => {
         const condColor = { New: '#00ff88', 'Like New': '#7bff6e', Good: '#ffd700', Fair: '#ff9944', Poor: '#ff4444' }[item.condition] || '#888';
         const primaryImg = item.images?.[0];
         return (
-            <motion.div
+            <div
                 initial={{ scale: 0.92, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: "spring" }}
@@ -517,15 +517,15 @@ const Marketplace = () => {
                         <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 3 }}><MapPin size={11} />{item.meetupLocations?.length > 0 ? item.meetupLocations[0].campus : "Campus"}</span>
                     </div>
                 </div>
-            </motion.div>
+            </div>
         );
     };
     const SectionGrid = ({ items, title }) => (
         <div>
             <h2 style={{ color: "#fff", marginBottom: "18px", fontSize: "1.4rem", display: "flex", alignItems: "center", gap: "10px" }}>{title}</h2>
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: "22px" }}>
+            <div variants={containerVariants} initial="hidden" animate="visible" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: "22px" }}>
                 {items.map(item => <ListingCard key={item._id} item={item} onClick={() => setSelectedListing(item)} />)}
-            </motion.div>
+            </div>
         </div>
     );
 
@@ -546,7 +546,7 @@ const Marketplace = () => {
                         const badge = statusBadge(item.status);
                         const emoji = { sell: '🛒', rent: '🔑', borrow: '🤝' }[item.listingType] || '📦';
                         return (
-                            <motion.div key={item._id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-panel" style={{ padding: "18px", display: "flex", alignItems: "center", gap: "14px" }}>
+                            <div key={item._id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-panel" style={{ padding: "18px", display: "flex", alignItems: "center", gap: "14px" }}>
                                 {item.images?.[0]
                                     ? <img src={item.images[0]} alt={item.title} style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
                                     : <div style={{ fontSize: "2rem", flexShrink: 0 }}>{emoji}</div>
@@ -572,7 +572,7 @@ const Marketplace = () => {
                                     )}
                                     <button className="btn-neon" title="Delete listing" onClick={() => handleDeleteListing(item._id)} style={{ padding: "7px 10px", fontSize: "0.8rem", background: "rgba(255,68,68,0.08)", borderColor: "#ff444444", color: "#ff4444" }}><Trash2 size={14} /></button>
                                 </div>
-                            </motion.div>
+                            </div>
                         );
                     })}
                 </div>
@@ -603,7 +603,7 @@ const Marketplace = () => {
             const isOverdue = borrowRecord && new Date(borrowRecord.returnDate) < new Date() && borrowRecord.status !== 'returned';
             const isReviewing = reviewingTrade?._id === trade._id;
             return (
-                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="glass-panel" style={{ padding: "18px", display: "flex", flexDirection: "column", gap: 12 }}>
+                <div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="glass-panel" style={{ padding: "18px", display: "flex", flexDirection: "column", gap: 12 }}>
                     <div style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
                         <div style={{ fontSize: "1.8rem", flexShrink: 0 }}>🔄</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -667,7 +667,7 @@ const Marketplace = () => {
                             </div>
                         </div>
                     )}
-                </motion.div>
+                </div>
             );
         };
 
@@ -701,54 +701,50 @@ const Marketplace = () => {
 
     /* ─── Main render ─── */
     return (
-        <div style={{ padding: "100px 20px 60px", maxWidth: "1200px", margin: "0 auto" }}>
+        <div className="page-wrapper container">
 
             {/* Page Header */}
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} style={{ marginBottom: "30px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
+            <div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ marginBottom: "40px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "24px" }}>
                     <div>
-                        <h1 className="text-gradient" style={{ fontSize: "2.8rem", marginBottom: "6px" }}>Marketplace</h1>
-                        <p style={{ color: "var(--text-secondary)", fontSize: "1rem" }}>Buy, sell, rent &amp; borrow within the UniLoop network.</p>
+                        <h1 className="text-gradient">Marketplace</h1>
+                        <p style={{ fontSize: "1.1rem", margin: 0 }}>Buy, sell, rent & borrow within the UniLoop network.</p>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(0,0,0,0.2)", padding: "6px 12px", borderRadius: "12px", border: "1px solid var(--border-glass)", marginLeft: "auto" }}>
-                        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: chatSocketConnected ? "#00ff88" : "#ff4444" }} />
-                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{chatSocketConnected ? "Live Connection" : "Offline"}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "var(--bg-surface)", padding: "8px 16px", borderRadius: "100px", border: "1px solid var(--border-subtle)" }}>
+                        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: chatSocketConnected ? "var(--primary)" : "#ff4444" }} />
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600 }}>{chatSocketConnected ? "Network Live" : "Offline"}</span>
                     </div>
-                    <button onClick={() => setIsCreatingListing(true)} className="btn-neon primary" style={{ padding: "10px 22px", display: "flex", alignItems: "center", gap: "8px", height: "fit-content" }}>
+                    <button onClick={() => setIsCreatingListing(true)} className="btn-neon primary" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <Plus size={18} /> List Item
                     </button>
                 </div>
-            </motion.div>
+            </div>
 
             {/* Tab Bar */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} style={{ display: "flex", gap: "6px", marginBottom: "28px", background: "rgba(0,0,0,0.3)", padding: "6px", borderRadius: "14px", border: "1px solid var(--border-glass)", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "24px", marginBottom: "32px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px", overflowX: "auto" }}>
                 {TABS.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         style={{
-                            flex: "1 1 auto", padding: "10px 18px", borderRadius: "10px", border: "none", cursor: "pointer",
-                            display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                            fontWeight: activeTab === tab.id ? "700" : "400",
-                            fontSize: "0.9rem",
-                            background: activeTab === tab.id ? "linear-gradient(135deg, rgba(0,212,255,0.2), rgba(112,0,255,0.2))" : "transparent",
-                            color: activeTab === tab.id ? "#fff" : "var(--text-muted)",
-                            boxShadow: activeTab === tab.id ? "0 0 20px rgba(0,212,255,0.1)" : "none",
-                            outline: activeTab === tab.id ? "1px solid rgba(0,212,255,0.25)" : "none",
-                            transition: "all 0.2s"
+                            background: "none", border: "none", cursor: "pointer",
+                            display: "flex", alignItems: "center", gap: "8px",
+                            fontWeight: 700, fontSize: "0.95rem",
+                            color: activeTab === tab.id ? "var(--primary)" : "var(--text-muted)",
+                            padding: "8px 4px",
+                            borderBottom: activeTab === tab.id ? "2px solid var(--primary)" : "2px solid transparent",
+                            transition: "var(--transition)"
                         }}
                     >
                         {tab.icon} {tab.label}
-                        {tab.id === 'messages' && unreadTotal > 0 && (
-                            <span style={{ background: '#ff4444', color: '#fff', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '10px' }}>{unreadTotal}</span>
-                        )}
+                        {tab.id === 'messages' && unreadTotal > 0 && <span className="unread-badge">{unreadTotal}</span>}
                     </button>
                 ))}
-            </motion.div>
+            </div>
 
             {/* ── Browse Tab ── */}
             {activeTab === 'browse' && (
-                <motion.div key="browse" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <div key="browse" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     {/* Search & Filter Row */}
                     <div style={{ display: "flex", gap: "10px", marginBottom: "14px", flexWrap: "wrap" }}>
                         <div style={{ position: "relative", flex: "1 1 220px" }}>
@@ -802,12 +798,12 @@ const Marketplace = () => {
                             )}
                         </div>
                     )}
-                </motion.div>
+                </div>
             )}
 
             {/* ── My Listings Tab ── */}
             {activeTab === 'mylistings' && (
-                <motion.div key="mylistings" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <div key="mylistings" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
                         <h2 style={{ color: "#fff", margin: 0, fontSize: "1.4rem" }}>📦 My Listings</h2>
                         <div style={{ display: "flex", gap: "10px" }}>
@@ -820,12 +816,12 @@ const Marketplace = () => {
                         </div>
                     </div>
                     <MyListingsTab />
-                </motion.div>
+                </div>
             )}
 
             {/* ── My Trades Tab ── */}
             {activeTab === 'mytrades' && (
-                <motion.div key="mytrades" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <div key="mytrades" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
                         <h2 style={{ color: "#fff", margin: 0, fontSize: "1.4rem" }}>🔄 My Trades</h2>
                         <button className="btn-neon" onClick={loadMyTrades} style={{ padding: "8px 14px", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}>
@@ -833,16 +829,16 @@ const Marketplace = () => {
                         </button>
                     </div>
                     <MyTradesTab />
-                </motion.div>
+                </div>
             )}
 
             {/* ── Listing Detail Modal ── */}
             <AnimatePresence>
                 {selectedListing && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    <div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", backdropFilter: "blur(6px)" }}
                         onClick={() => setSelectedListing(null)}>
-                        <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                        <div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
                             className="glass-panel"
                             style={{ maxWidth: "520px", width: "100%", padding: "32px", maxHeight: "90vh", overflowY: "auto" }}
                             onClick={e => e.stopPropagation()}>
@@ -904,18 +900,18 @@ const Marketplace = () => {
                                     </button>
                                 </div>
                             </form>
-                        </motion.div>
-                    </motion.div>
+                        </div>
+                    </div>
                 )}
             </AnimatePresence>
 
             {/* ── Create Listing Modal ── */}
             <AnimatePresence>
                 {isCreatingListing && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    <div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", backdropFilter: "blur(6px)" }}
                         onClick={() => setIsCreatingListing(false)}>
-                        <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                        <div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
                             className="glass-panel"
                             style={{ maxWidth: "500px", width: "100%", padding: "32px", maxHeight: "90vh", overflowY: "auto" }}
                             onClick={e => e.stopPropagation()}>
@@ -989,18 +985,18 @@ const Marketplace = () => {
                                     <button type="submit" className="btn-neon primary" style={{ flex: 2 }}>Create Listing</button>
                                 </div>
                             </form>
-                        </motion.div>
-                    </motion.div>
+                        </div>
+                    </div>
                 )}
             </AnimatePresence>
 
             {/* ── Edit Listing Modal ── */}
             <AnimatePresence>
                 {editingListing && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    <div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", backdropFilter: "blur(6px)" }}
                         onClick={() => setEditingListing(null)}>
-                        <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                        <div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
                             className="glass-panel"
                             style={{ maxWidth: "500px", width: "100%", padding: "32px", maxHeight: "90vh", overflowY: "auto" }}
                             onClick={e => e.stopPropagation()}>
@@ -1051,14 +1047,14 @@ const Marketplace = () => {
                                     <button type="submit" className="btn-neon primary" style={{ flex: 2 }}>Save Changes</button>
                                 </div>
                             </form>
-                        </motion.div>
-                    </motion.div>
+                        </div>
+                    </div>
                 )}
             </AnimatePresence>
 
             {/* ── Wishlist Tab ── */}
             {activeTab === 'wishlist' && (
-                <motion.div key="wishlist" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <div key="wishlist" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
                         <h2 style={{ color: "#fff", margin: 0, fontSize: "1.4rem" }}>❤️ My Wishlist</h2>
                     </div>
@@ -1074,12 +1070,12 @@ const Marketplace = () => {
                             {wishlistItems.filter(item => item.listing).map(item => <ListingCard key={item._id} item={item.listing} onClick={() => setSelectedListing(item.listing)} />)}
                         </div>
                     )}
-                </motion.div>
+                </div>
             )}
 
             {/* ── Messages Tab ── */}
             {activeTab === 'messages' && (
-                <motion.div key="messages" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                <div key="messages" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 280px)', minHeight: '500px', background: 'rgba(10,10,20,0.6)', borderRadius: '16px', border: '1px solid rgba(0,212,255,0.12)', overflow: 'hidden' }}>
 
                     {/* Split layout: sidebar + chat area */}
@@ -1148,7 +1144,7 @@ const Marketplace = () => {
                                     {chatMessages.map((msg, i) => {
                                         const isMe = msg.sender?._id === user?._id;
                                         return (
-                                            <motion.div key={msg._id || i}
+                                            <div key={msg._id || i}
                                                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                                                 style={{
                                                     alignSelf: isMe ? 'flex-end' : 'flex-start',
@@ -1166,7 +1162,7 @@ const Marketplace = () => {
                                                     {format(new Date(msg.createdAt || Date.now()), 'p')}
                                                     {isMe && msg.isRead && <span style={{ color: 'var(--accent-cyan)', marginLeft: '4px' }}>✓✓</span>}
                                                 </div>
-                                            </motion.div>
+                                            </div>
                                         );
                                     })}
                                     <div ref={messagesEndRef} />
@@ -1190,7 +1186,7 @@ const Marketplace = () => {
                             </div>
                         )}
                     </div>
-                </motion.div>
+                </div>
             )}
 
         </div>

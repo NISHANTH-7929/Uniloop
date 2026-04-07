@@ -9,21 +9,11 @@ const SOSBroadcastBanner = () => {
     return (
         <div id="sos-broadcast-banner" style={{
             position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999,
-            background: "linear-gradient(90deg, #ff0000, #cc0000)",
-            color: "#fff", padding: "10px 20px",
+            background: "linear-gradient(90deg, #1E293B, #991B1B)",
+            color: "#F8FAFC", padding: "12px 24px",
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            boxShadow: "0 4px 20px rgba(255,0,0,0.4)",
-            animation: "sosPulse 1.5s ease-in-out infinite alternate",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.2)",
         }}>
-            <style>{`
-                @keyframes sosPulse {
-                    from { opacity: 1; }
-                    to   { opacity: 0.85; }
-                }
-                body[data-sos="true"] {
-                    --sos-banner-height: 46px;
-                }
-            `}</style>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <span style={{ fontSize: "1.3rem" }}>🚨</span>
                 <div>

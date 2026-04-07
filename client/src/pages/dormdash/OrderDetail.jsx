@@ -31,7 +31,7 @@ const OrderDetail = () => {
       }
     };
     fetchOrder();
-  }, [id, globalState.lastUpdate]); // Re-fetch when socket detects update
+  }, [id, globalState.lastUpdate]);
 
   if (loading) return <div style={{ textAlign: "center", padding: "40px", color: "var(--text-secondary)" }}>Loading Order...</div>;
   if (error || !order) return <div style={{ textAlign: "center", padding: "40px", color: "#ff4444" }}>{error}</div>;
@@ -44,26 +44,19 @@ const OrderDetail = () => {
     setActionLoading(true);
     try {
       let data;
-
       if (actionPath === 'verify-delivery') {
-        // Backend expects POST /api/dormdash/orders/:id/otp/verify
         const res = await api.post(`/dormdash/orders/${id}/otp/verify`, { otp: payload.otp });
         data = res.data;
       } else {
         const res = await api.patch(`/dormdash/orders/${id}/${actionPath}`, payload);
         data = res.data;
       }
-
       setOrder(data.order || data.data || data);
-
       if (actionPath === 'accept') {
-        alert("Request sent to user! Waiting for their confirmation.");
-      } else if (actionPath === 'confirm') {
-        if (data.chatThreadId) {
+        alert("Request sent to user!");
+      } else if (actionPath === 'confirm' && data.chatThreadId) {
           navigate('/dormdash/messages', { state: { conversationId: data.chatThreadId, threadType: 'dormdash' } });
-        }
       }
-
     } catch (err) {
       alert(err.response?.data?.message || `Failed to ${actionPath}`);
     } finally {
@@ -75,7 +68,6 @@ const OrderDetail = () => {
     try {
       await api.post(`/dormdash/orders/${id}/review`, { rating, comment });
       setIsReviewModalOpen(false);
-      // Re-fetch to get updated review state
       const { data } = await api.get(`/dormdash/orders/${id}`);
       setOrder(data.data || data.order || data);
     } catch (err) {
@@ -83,257 +75,87 @@ const OrderDetail = () => {
     }
   };
 
-  // Reviews are stored as subdocuments on the order (not a separate reviews array)
-  // dasherReview = review written BY requester ABOUT the dasher
-  // requesterReview = review written BY dasher ABOUT the requester
   const myReview = isRequester ? order.dasherReview : order.requesterReview;
-  const theirReview = isRequester ? order.requesterReview : order.dasherReview;
-  const bothRevealed = order.reviewsRevealed;
 
   return (
-    <div style={{ maxWidth: "800px", margin: "0 auto", paddingBottom: "40px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px", borderBottom: "1px solid var(--border-glass)", paddingBottom: "15px" }}>
-        <h1 className="text-gradient" style={{ fontSize: "2rem", margin: 0 }}>Order Detail</h1>
+    <div style={{ maxWidth: "800px", margin: "0 auto", paddingBottom: "64px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "24px" }}>
+        <h1 className="text-gradient">Order Detail</h1>
         <span style={{
-          padding: "6px 14px", borderRadius: "8px", fontWeight: "bold", textTransform: "uppercase", fontSize: "0.85rem", letterSpacing: "1px",
-          background: ['open'].includes(order.status) ? 'rgba(0, 212, 255, 0.1)' : ['ACCEPTED_BY_DASHER', 'CONFIRMED_BY_USER'].includes(order.status) ? 'rgba(112, 0, 255, 0.1)' : ['delivered', 'COMPLETED'].includes(order.status) ? 'rgba(0, 255, 136, 0.1)' : order.status === 'cancelled' ? 'rgba(255, 68, 68, 0.1)' : 'rgba(255, 255, 255, 0.1)',
-          color: ['open'].includes(order.status) ? 'var(--accent-cyan)' : ['ACCEPTED_BY_DASHER', 'CONFIRMED_BY_USER'].includes(order.status) ? 'var(--accent-purple)' : ['delivered', 'COMPLETED'].includes(order.status) ? '#00ff88' : order.status === 'cancelled' ? '#ff4444' : '#fff',
-          border: `1px solid ${['open'].includes(order.status) ? 'rgba(0, 212, 255, 0.3)' : ['ACCEPTED_BY_DASHER', 'CONFIRMED_BY_USER'].includes(order.status) ? 'rgba(112, 0, 255, 0.3)' : ['delivered', 'COMPLETED'].includes(order.status) ? 'rgba(0, 255, 136, 0.3)' : order.status === 'cancelled' ? 'rgba(255, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.3)'}`
+          padding: "8px 16px", borderRadius: "100px", fontWeight: "700", textTransform: "uppercase", fontSize: "0.8rem", letterSpacing: "0.05em",
+          background: "rgba(255, 255, 255, 0.1)", color: "#fff",
+          border: "1px solid rgba(255, 255, 255, 0.3)"
         }}>
           {order.status.replace(/_/g, ' ')}
         </span>
       </div>
 
-      {/* Order Progress Tracker */}
       {order.status !== 'cancelled' && (
-        <div className="glass-panel" style={{ padding: "25px", marginBottom: "30px", overflowX: "auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", minWidth: "600px", position: "relative" }}>
-            {/* Connecting lines */}
-            <div style={{ position: "absolute", top: "15px", left: "10%", right: "10%", height: "2px", background: "rgba(255,255,255,0.1)", zIndex: 0 }} />
+        <div className="card" style={{ padding: "32px", marginBottom: "40px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
+            <div style={{ position: "absolute", top: "16px", left: "10%", right: "10%", height: "2px", background: "var(--border-subtle)", zIndex: 0 }} />
             <div style={{ 
-              position: "absolute", top: "15px", left: "10%", 
+              position: "absolute", top: "16px", left: "10%", 
               width: `${(
                 ["delivered", "COMPLETED"].includes(order.status) ? 80 : 
                 order.status === "in_transit" ? 60 : 
                 order.status === "picked_up" ? 40 : 
                 !["open", "ACCEPTED_BY_DASHER"].includes(order.status) ? 20 : 0
               )}%`, 
-              height: "2px", background: "var(--accent-cyan)", boxShadow: "0 0 10px var(--accent-cyan)", zIndex: 0, transition: "width 0.5s ease" 
+              height: "2px", background: "var(--primary)", zIndex: 0
             }} />
-
-            {[
-              { label: "Posted", active: true },
-              { label: "Accepted", active: !["open"].includes(order.status) },
-              { label: "Picked Up", active: ["picked_up", "in_transit", "delivered", "COMPLETED"].includes(order.status) },
-              { label: "In Transit", active: ["in_transit", "delivered", "COMPLETED"].includes(order.status) },
-              { label: "Delivered", active: ["delivered", "COMPLETED"].includes(order.status) }
-            ].map((step, idx) => (
-              <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", zIndex: 1, position: "relative", flex: 1 }}>
-                <div style={{ 
-                  width: "32px", height: "32px", borderRadius: "50%", 
-                  background: step.active ? "var(--accent-cyan)" : "rgba(255,255,255,0.05)",
-                  border: `2px solid ${step.active ? "#fff" : "rgba(255,255,255,0.1)"}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: step.active ? "0 0 15px var(--accent-cyan)" : "none",
-                  transition: "all 0.3s ease"
-                }}>
-                  {step.active ? (
-                    <span style={{ color: "#000", fontWeight: "bold", fontSize: "0.8rem" }}>{idx + 1}</span>
-                  ) : (
-                    <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{idx + 1}</span>
-                  )}
-                </div>
-                <span style={{ fontSize: "0.75rem", fontWeight: step.active ? "bold" : "normal", color: step.active ? "#fff" : "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}>
-                  {step.label}
-                </span>
-              </div>
-            ))}
+            {[ "Posted", "Accepted", "Picked Up", "In Transit", "Delivered" ].map((label, idx) => {
+                const isActive = (idx === 0) || (idx === 1 && !["open"].includes(order.status)) || (idx === 2 && ["picked_up", "in_transit", "delivered", "COMPLETED"].includes(order.status)) || (idx === 3 && ["in_transit", "delivered", "COMPLETED"].includes(order.status)) || (idx === 4 && ["delivered", "COMPLETED"].includes(order.status));
+                return (
+                    <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", zIndex: 1, flex: 1 }}>
+                        <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: isActive ? "var(--primary)" : "var(--card-bg)", border: `2px solid ${isActive ? "var(--primary)" : "var(--border-subtle)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <span style={{ color: isActive ? "#000" : "var(--text-muted)", fontWeight: "bold", fontSize: "0.75rem" }}>{idx + 1}</span>
+                        </div>
+                        <span style={{ fontSize: "0.75rem", fontWeight: 700, color: isActive ? "var(--primary)" : "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+                    </div>
+                );
+            })}
           </div>
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "25px", marginTop: "30px" }}>
-        
-        <div className="glass-panel" style={{ padding: "30px" }}>
-          <h2 style={{ fontSize: "1.4rem", color: "#fff", borderBottom: "1px solid var(--border-glass)", paddingBottom: "10px", marginBottom: "20px" }}>Logistics</h2>
-          
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
-            <div>
-              <p style={{ margin: "0 0 5px", color: "var(--text-muted)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "1px" }}>Pickup Location</p>
-              <p style={{ margin: 0, color: "#fff", fontWeight: "bold", fontSize: "1.1rem" }}>{order.pickupLocation}</p>
-            </div>
-            <div>
-              <p style={{ margin: "0 0 5px", color: "var(--text-muted)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "1px" }}>Dropoff Location</p>
-              <p style={{ margin: 0, color: "#fff", fontWeight: "bold", fontSize: "1.1rem" }}>{order.dropLocation}</p>
-            </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "25px" }}>
+        <div className="card" style={{ padding: "32px" }}>
+          <h2 style={{ fontSize: "1.25rem", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "16px", marginBottom: "24px" }}>Logistics</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "32px" }}>
+            <div><p style={{ margin: "0 0 8px", color: "var(--text-muted)", fontSize: "0.8rem", textTransform: "uppercase" }}>Pickup</p><p style={{ margin: 0, fontWeight: "700", fontSize: "1.1rem" }}>{order.pickupLocation}</p></div>
+            <div><p style={{ margin: "0 0 8px", color: "var(--text-muted)", fontSize: "0.8rem", textTransform: "uppercase" }}>Dropoff</p><p style={{ margin: 0, fontWeight: "700", fontSize: "1.1rem" }}>{order.dropLocation}</p></div>
           </div>
-
-          <div style={{ marginBottom: "20px", padding: "15px", background: "rgba(0, 255, 136, 0.05)", border: "1px solid rgba(0, 255, 136, 0.2)", borderRadius: "12px", display: "inline-block" }}>
-            <p style={{ margin: "0 0 5px", color: "#00ff88", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "1px" }}>Dasher Fee (Pay in person)</p>
-            <p style={{ margin: 0, color: "#fff", fontWeight: "bold", fontSize: "1.5rem" }}>₹{order.charge}</p>
+          <div style={{ marginBottom: "32px", padding: "16px 24px", background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.1)", borderRadius: "var(--radius-md)", display: "inline-block" }}>
+            <p style={{ margin: "0 0 4px", color: "var(--primary)", fontSize: "0.8rem", textTransform: "uppercase", fontWeight: 700 }}>Service Fee</p><p style={{ margin: 0, fontWeight: "800", fontSize: "1.75rem", color: "#fff" }}>₹{order.charge}</p>
           </div>
-
           {order.instructions && (
-            <div style={{ marginBottom: "20px" }}>
-              <p style={{ margin: "0 0 5px", color: "var(--text-muted)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "1px" }}>Instructions</p>
-              <p style={{ margin: 0, color: "var(--text-secondary)", fontStyle: "italic", background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>"{order.instructions}"</p>
-            </div>
+            <div style={{ marginBottom: "32px" }}><p style={{ margin: "0 0 8px", color: "var(--text-muted)", fontSize: "0.8rem", textTransform: "uppercase" }}>Instructions</p><p style={{ margin: 0, color: "var(--text-secondary)", fontStyle: "italic", background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "12px", border: "1px solid var(--border-subtle)" }}>"{order.instructions}"</p></div>
           )}
-
-          <div style={{ marginTop: "25px" }}>
-            <h3 style={{ fontSize: "1.1rem", color: "#fff", marginBottom: "10px" }}>Items ({order.items.reduce((acc, i) => acc + i.quantity, 0)})</h3>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {order.items.map((it, idx) => (
-                <li key={idx} style={{ padding: "10px 0", borderBottom: "1px solid var(--border-glass)", display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
-                  <span>{it.quantity}x {it.name}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <div><h3 style={{ fontSize: "1rem", marginBottom: "16px" }}>Order Items</h3><ul style={{ listStyle: "none", padding: 0 }}>{order.items.map((it, idx) => (<li key={idx} style={{ padding: "12px 0", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between" }}><span style={{ fontWeight: 500 }}>{it.quantity}× {it.name}</span></li>))}</ul></div>
         </div>
 
         {order.status !== 'cancelled' && (
-          <div className="glass-panel" style={{ padding: "30px" }}>
-            <h2 style={{ fontSize: "1.4rem", color: "#fff", borderBottom: "1px solid var(--border-glass)", paddingBottom: "10px", marginBottom: "20px" }}>People</h2>
-            
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <div>
-                <p style={{ margin: "0 0 5px", color: "var(--text-muted)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "1px" }}>Requester</p>
-                <Link to={order.status === 'open' && !isRequester ? '#' : `/dormdash/profile/${order.requester._id}`} style={{ color: "var(--accent-cyan)", fontWeight: "bold", fontSize: "1.1rem", textDecoration: "none", cursor: order.status === 'open' && !isRequester ? 'default' : 'pointer' }}>
-                  {order.status === 'open' && !isRequester ? 'Student (Hidden until accepted)' : (order.requester.name || order.requester.email?.split('@')[0] || 'Student')} {isRequester && '(You)'}
-                </Link>
-                {(!isRequester || order.status !== 'open') && order.requester.averageRating !== undefined && (
-                  <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px" }}>
-                     {order.requester.averageRating.toFixed(1)} | {order.requester.trustScore}% Trust
-                  </div>
-                )}
-              </div>
-              <div>
-                <p style={{ margin: "0 0 5px", color: "var(--text-muted)", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "1px", textAlign: "right" }}>Dasher</p>
-                {order.dasher ? (
-                  <>
-                    <Link to={`/dormdash/profile/${order.dasher._id}`} style={{ color: "var(--accent-purple)", fontWeight: "bold", fontSize: "1.1rem", textDecoration: "none" }}>
-                      {order.dasher.name || order.dasher.email?.split('@')[0] || 'Student'} {isDasher && '(You)'}
-                    </Link>
-                    {order.dasher.averageRating !== undefined && (
-                      <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px", textAlign: "right" }}>
-                        ⭐ {order.dasher.averageRating.toFixed(1)} | {order.dasher.trustScore}% Trust
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <span style={{ color: "var(--text-secondary)", fontStyle: "italic" }}>Awaiting Assignment</span>
-                )}
-              </div>
+          <div className="card" style={{ padding: "32px" }}>
+            <h2 style={{ fontSize: "1.25rem", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "16px", marginBottom: "32px" }}>Partner Info</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "32px" }}>
+                <div><p style={{ fontSize: "0.8rem", textTransform: "uppercase", color: "var(--text-muted)" }}>Requester</p><span style={{ fontWeight: 700 }}>{order.requester.name || "Student"}</span></div>
+                <div style={{ textAlign: "right" }}><p style={{ fontSize: "0.8rem", textTransform: "uppercase", color: "var(--text-muted)" }}>Dasher</p><span style={{ fontWeight: 700 }}>{order.dasher?.name || "Unassigned"}</span></div>
             </div>
-
-
-            {['open', 'ACCEPTED_BY_DASHER'].includes(order.status) && isRequester && (
-              <button 
-                onClick={() => handleAction('cancel')} 
-                disabled={actionLoading}
-                className="btn-neon"
-                style={{ width: "100%", borderColor: "#ff4444", color: "#ff4444", marginBottom: "10px" }}
-              >
-                Cancel Order
-              </button>
-            )}
-
-            {order.status === 'open' && !isRequester && isUnassigned && globalState.dasherMode && (
-              <button 
-                onClick={() => handleAction('accept')} 
-                disabled={actionLoading}
-                className="btn-neon primary"
-                style={{ width: "100%", marginBottom: "10px" }}
-              >
-                Accept Delivery Run
-              </button>
-            )}
-
-            {isRequester && order.status === 'ACCEPTED_BY_DASHER' && (
-              <>
-                <button 
-                  onClick={() => handleAction('confirm')} 
-                  disabled={actionLoading}
-                  className="btn-neon primary"
-                  style={{ width: "100%", marginBottom: "10px" }}
-                >
-                  Confirm Dasher Selection
-                </button>
-                <button 
-                  onClick={() => handleAction('decline')} 
-                  disabled={actionLoading}
-                  className="btn-neon"
-                  style={{ width: "100%", borderColor: "#ff4444", color: "#ff4444", marginBottom: "10px" }}
-                >
-                  Decline Dasher Request
-                </button>
-              </>
-            )}
-
-            {isDasher && order.status === 'CONFIRMED_BY_USER' && (
-              <button onClick={() => handleAction('pickup')} disabled={actionLoading} className="btn-neon primary" style={{ width: "100%", marginBottom: "10px" }}>
-                Mark as Picked Up
-              </button>
-            )}
-
-            {isDasher && order.status === 'picked_up' && (
-              <button onClick={() => handleAction('intransit')} disabled={actionLoading} className="btn-neon primary" style={{ width: "100%", marginBottom: "10px" }}>
-                Mark as In Transit
-              </button>
-            )}
-            
-            {/* Phase 4: Advanced Chat Entry Points */}
-            {!['open', 'ACCEPTED_BY_DASHER', 'cancelled'].includes(order.status) && (
-              <button 
-                onClick={() => navigate('/dormdash/messages', { state: { conversationId: order.chatThreadId || order._id, threadType: 'dormdash' } })} 
-                className="btn-neon"
-                style={{ width: "100%", marginBottom: "15px", display: "flex", justifyContent: "center", gap: "10px", alignItems: "center" }}
-              >
-                <span>💬 Contact {isRequester ? 'Dasher' : 'User'}</span>
-              </button>
-            )}
-
-            {isRequester && order.status === 'delivered' && (
-              <button onClick={() => handleAction('complete')} disabled={actionLoading} className="btn-neon primary" style={{ width: "100%", marginBottom: "10px" }}>
-                Mark Delivery as Completely Resolved
-              </button>
-            )}
-            
+            {isRequester && order.status === 'ACCEPTED_BY_DASHER' && (<div style={{ display: "flex", gap: "12px" }}><button onClick={() => handleAction('confirm')} className="btn-neon primary" style={{ flex: 1 }}>Confirm</button><button onClick={() => handleAction('decline')} className="btn-neon" style={{ flex: 1, color: "#EF4444" }}>Decline</button></div>)}
+            {order.status === 'open' && !isRequester && isUnassigned && globalState.dasherMode && (<button onClick={() => handleAction('accept')} className="btn-neon primary" style={{ width: "100%" }}>Accept Delivery</button>)}
+            {isDasher && order.status === 'CONFIRMED_BY_USER' && (<button onClick={() => handleAction('pickup')} className="btn-neon primary" style={{ width: "100%" }}>Mark Picked Up</button>)}
+            {isDasher && order.status === 'picked_up' && (<button onClick={() => handleAction('intransit')} className="btn-neon primary" style={{ width: "100%" }}>Mark In Transit</button>)}
+            {!['open', 'ACCEPTED_BY_DASHER', 'cancelled'].includes(order.status) && (<button onClick={() => navigate('/dormdash/messages')} className="btn-neon" style={{ width: "100%", marginTop: "12px" }}>Contact Partner</button>)}
           </div>
         )}
 
-        {order.status === 'in_transit' && isRequester && (
-          <OTPDisplay 
-            otp={order.otpCode} 
-            expiresAt={order.updatedAt} // Use updatedAt as proxy for expiry
-            onRegenerate={() => handleAction('regenerate-otp')}
-          />
-        )}
-
-        {order.status === 'in_transit' && isDasher && (
-          <OTPEntry 
-            onVerify={(otp) => handleAction('verify-delivery', { otp })} 
-            loading={actionLoading} 
-          />
-        )}
-
         {['delivered', 'COMPLETED'].includes(order.status) && (
-           <div className="glass-panel" style={{ padding: "30px", textAlign: "center", marginTop: "25px" }}>
-             <div style={{ fontSize: "3rem", marginBottom: "15px" }}>🎉</div>
-             <h2 style={{ color: "#00ff88", marginBottom: "10px" }}>{order.status === 'COMPLETED' ? 'Delivery Completed & Closed!' : 'Delivered!'}</h2>
-             
-             {!myReview?.submitted && (
-               <div style={{ marginTop: "20px" }}>
-                 <p style={{ color: "var(--text-secondary)", marginBottom: "20px" }}>Leave a blind review for the {isRequester ? 'dasher' : 'requester'}!</p>
-                 <button onClick={() => setIsReviewModalOpen(true)} className="btn-neon primary">
-                   Write a Review
-                 </button>
-               </div>
-             )}
-           </div>
+            <div className="card" style={{ padding: "40px", textAlign: "center" }}>
+                <h2>🎉 {order.status.replace(/_/g, ' ')}</h2>
+                {!myReview?.submitted && (<button onClick={() => setIsReviewModalOpen(true)} className="btn-neon primary" style={{ marginTop: "24px" }}>Leave Review</button>)}
+            </div>
         )}
-
       </div>
 
       <ReviewModal 

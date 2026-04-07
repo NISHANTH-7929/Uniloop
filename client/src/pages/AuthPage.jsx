@@ -31,12 +31,6 @@ const AuthPage = () => {
 
     return (
         <div className="auth-page-root">
-            {/* Animated Background Elements */}
-            <div className="auth-bg-shapes">
-                <div className="auth-shape auth-shape-1"></div>
-                <div className="auth-shape auth-shape-2"></div>
-            </div>
-
             <div className="auth-container-glass">
                 {/* Left Side: Forms */}
                 <div className="auth-form-column">
@@ -82,9 +76,9 @@ const AuthPage = () => {
                                 exit="exit"
                                 className="auth-info-content"
                             >
-                                <h2 className="text-gradient">New Here?</h2>
-                                <p>Sign up and discover a cosmic amount of new opportunities!</p>
-                                <button className="btn-neon" onClick={toggleAuth}>
+                                <h2 className="text-gradient">Join the Community</h2>
+                                <p>Connect with fellow students, manage events, and trade in our professional student marketplace.</p>
+                                <button className="btn-neon primary" onClick={toggleAuth}>
                                     Create Account
                                 </button>
                             </motion.div>
@@ -99,8 +93,8 @@ const AuthPage = () => {
                                 className="auth-info-content"
                             >
                                 <h2 className="text-gradient">Welcome Back!</h2>
-                                <p>If you already have an account, sign in to continue your journey.</p>
-                                <button className="btn-neon" onClick={toggleAuth}>
+                                <p>Sign in to access your personalized dashboard and campus network.</p>
+                                <button className="btn-neon primary" onClick={toggleAuth}>
                                     Sign In
                                 </button>
                             </motion.div>
