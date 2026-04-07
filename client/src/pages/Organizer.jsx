@@ -218,32 +218,26 @@ const Organizer = () => {
     };
 
     return (
-        <div className="page-wrapper container" style={{ maxWidth: "1200px" }}>
-            <motion.div 
-                initial={{ opacity: 0, y: -10 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                style={{ marginBottom: "48px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "24px" }}
-            >
+        <div style={{ padding: "100px 20px 40px", maxWidth: "1200px", margin: "0 auto", minHeight: '100vh' }}>
+            {/* Top-left Action Bar }
+            {<div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                <button
+                    className="btn-neon primary"
+                    onClick={() => navigate('/my-tickets')}
+                    style={{ padding: '8px 20px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                    View My Tickets
+                </button>
+            </div>*/}
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: "30px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "20px" }}>
                 <div>
-                    <h1 className="text-gradient">Organizer Hub</h1>
-                    <p style={{ fontSize: "1.1rem", margin: 0 }}>Comprehensive event and team management dashboard.</p>
+                    <h1 className="text-gradient" style={{ fontSize: "3rem", marginBottom: "10px" }}>Organizer Hub</h1>
+                    <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem" }}>Central command for cosmic experiences.</p>
                 </div>
-                <div style={{ display: "flex", gap: "24px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px" }}>
-                    <button 
-                        className={`nav-link ${activeTab === 'events' ? 'active' : ''}`} 
-                        onClick={() => setActiveTab('events')}
-                        style={{ border: "none", background: "none", cursor: "pointer", fontWeight: 700 }}
-                    >Events</button>
-                    <button 
-                        className={`nav-link ${activeTab === 'attendees' ? 'active' : ''}`} 
-                        onClick={() => setActiveTab('attendees')}
-                        style={{ border: "none", background: "none", cursor: "pointer", fontWeight: 700 }}
-                    >Recruit</button>
-                    <button 
-                        className={`nav-link ${activeTab === 'volunteers' ? 'active' : ''}`} 
-                        onClick={() => setActiveTab('volunteers')}
-                        style={{ border: "none", background: "none", cursor: "pointer", fontWeight: 700 }}
-                    >Team</button>
+                <div style={{ display: "flex", gap: "10px" }}>
+                    <button className={`btn-neon ${activeTab === 'events' ? 'primary' : ''}`} onClick={() => setActiveTab('events')}>Events</button>
+                    <button className={`btn-neon ${activeTab === 'attendees' ? 'primary' : ''}`} onClick={() => setActiveTab('attendees')}>Recruit</button>
+                    <button className={`btn-neon ${activeTab === 'volunteers' ? 'primary' : ''}`} onClick={() => setActiveTab('volunteers')}>Team</button>
                 </div>
             </motion.div>
 
@@ -255,35 +249,37 @@ const Organizer = () => {
                         </button>
                     </div>
                     {showCreateForm && (
-                        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="card" style={{ padding: "32px", marginBottom: "40px" }}>
-                            <h2 style={{ marginBottom: "24px" }}>Create New Event</h2>
-                            <form onSubmit={handleCreateEvent} style={{ display: "grid", gap: "24px" }}>
+                        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="glass-panel" style={{ padding: "30px", marginBottom: "40px", border: "1px solid var(--accent-cyan)" }}>
+                            <h2 style={{ marginBottom: "20px", color: "var(--text-primary)" }}>Launch a New Grand Event</h2>
+                            <form onSubmit={handleCreateEvent} style={{ display: "grid", gap: "20px" }}>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "20px" }}>
                                     <div>
-                                        <label className="form-label">Event Title</label>
-                                        <input type="text" className="neon-input" required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g., Spring Tech Workshop" />
+                                        <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Event Name</label>
+                                        <input type="text" className="form-control bg-dark text-white border-secondary" required value={title} onChange={e => setTitle(e.target.value)} />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="form-label">Description</label>
-                                    <textarea className="neon-input" required rows="3" value={description} onChange={e => setDescription(e.target.value)} placeholder="Provide detailed information about the event..."></textarea>
+                                    <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Description</label>
+                                    <textarea className="form-control bg-dark text-white border-secondary" required rows="3" value={description} onChange={e => setDescription(e.target.value)}></textarea>
                                 </div>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
                                     <div>
-                                        <label className="form-label">Start Date & Time</label>
-                                        <input type="datetime-local" className="neon-input" required min={getMinDateTime()} value={date} onChange={e => setDate(e.target.value)} />
+                                        <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Mission Start (Date & Time)</label>
+                                        <input type="datetime-local" className="form-control bg-dark text-white border-secondary" required min={getMinDateTime()} value={date} onChange={e => setDate(e.target.value)} />
                                     </div>
                                     <div>
-                                        <label className="form-label">End Date & Time</label>
-                                        <input type="datetime-local" className="neon-input" required min={date || getMinDateTime()} value={endDate} onChange={e => setEndDate(e.target.value)} />
+                                        <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Mission End</label>
+                                        <input type="datetime-local" className="form-control bg-dark text-white border-secondary" required min={date || getMinDateTime()} value={endDate} onChange={e => setEndDate(e.target.value)} />
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="form-label">Event Banner *</label>
-                                    <input type="file" accept="image/*" className="neon-input" onChange={e => setImageFile(e.target.files[0])} required />
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                                    <div>
+                                        <label style={{ display: "block", marginBottom: "8px", color: "var(--text-secondary)" }}>Main Photo *</label>
+                                        <input type="file" accept="image/*" className="form-control bg-dark text-white border-secondary" onChange={e => setImageFile(e.target.files[0])} required />
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: '16px', marginTop: "8px" }}>
-                                    <button type="submit" className="btn-neon primary">Create Event</button>
+                                <div style={{ display: 'flex', gap: '15px' }}>
+                                    <button type="submit" className="btn-neon primary">Initialize Grand Event</button>
                                     <button type="button" className="btn-neon" onClick={resetForm}>Cancel</button>
                                 </div>
                             </form>
@@ -291,16 +287,17 @@ const Organizer = () => {
                     )}
 
 
-                    {loading ? <p>Loading events...</p> : (
+                    {loading ? <p>Scanning galaxy...</p> : (
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "24px" }}>
                             {events.map(ev => (
-                                <div key={ev._id} className="card" style={{ padding: "24px" }}>
-                                    <h3 style={{ color: "var(--primary)" }}>{ev.title}</h3>
-                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                                        {new Date(ev.date).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                                    </p>
-                                    <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                                        <button className="btn-neon" style={{ flex: 1 }} onClick={() => navigate(`/events/${ev._id}`)}>Management Details</button>
+                                <div key={ev._id} className="glass-panel" style={{ padding: "24px", border: ev.status === 'finished' ? '1px solid var(--accent-pink)' : '1px solid var(--border-glass)' }}>
+                                    <h3 style={{ color: "var(--accent-cyan)" }}>{ev.title}</h3>
+                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{new Date(ev.date).toLocaleString()}</p>
+                                    <div style={{ marginTop: '10px' }}>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px', flexWrap: 'wrap' }}>
+                                        <button className="btn-neon" style={{ flex: 1, padding: '6px' }} onClick={() => navigate(`/events/${ev._id}`)}>Stats</button>
+
                                     </div>
                                 </div>
                             ))}

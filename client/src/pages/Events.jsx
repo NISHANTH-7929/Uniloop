@@ -155,26 +155,31 @@ const Events = () => {
     };
 
     return (
-        <div className="page-wrapper container" style={{ maxWidth: "1200px" }}>
+        <div style={{ padding: "100px 20px 40px", maxWidth: "1200px", margin: "0 auto" }}>
             <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                style={{ marginBottom: "48px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "24px" }}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                style={{ marginBottom: "40px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "20px" }}
             >
                 <div>
-                    <h1 className="text-gradient">Discover Events</h1>
-                    <p style={{ fontSize: "1.1rem", margin: 0 }}>Explore professional workshops, gatherings and campus activities.</p>
+                    <h1 className="text-gradient" style={{ fontSize: "3rem", marginBottom: "10px", display: 'flex', alignItems: 'center', gap: 8 }}>
+                        Discover Events
+                        {hasNewEvents && <span style={{ width: 10, height: 10, borderRadius: 6, background: 'var(--accent-pink)' }} />}
+                        {isRefreshing && <span style={{ marginLeft: 8, fontSize: '0.9rem', color: 'var(--text-muted)' }}>Refreshing…</span>}
+                    </h1>
+                    <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem" }}>Explore upcoming cosmic gatherings and workshops.</p>
                 </div>
 
                 <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
                     {(user?.role === "organizer" || user?.role === "admin") && (
-                        <button className="btn-neon" onClick={() => navigate("/organizer")}>
+                        <button className="btn-neon" style={{ fontSize: '0.85rem', padding: '8px 16px' }} onClick={() => navigate("/organizer")}>
                             Organizer Hub
                         </button>
                     )}
                     {events.some(ev => ev.volunteers && ev.volunteers.some(v => (v._id || v) === user._id)) && (
-                        <button className="btn-neon primary" onClick={() => {
+                        <button className="btn-neon primary" style={{ fontSize: '0.85rem', padding: '8px 16px', background: 'var(--accent-purple)' }} onClick={() => {
+                            // Find first ongoing duty or just navigate to top
                             const duty = events.find(ev => ev.volunteers && ev.volunteers.some(v => (v._id || v) === user._id));
                             if (duty) navigate(`/volunteer/${duty._id}/${user._id}`);
                         }}>
@@ -184,17 +189,9 @@ const Events = () => {
                 </div>
             </motion.div>
 
-            <div style={{ marginBottom: "32px", display: "flex", gap: "24px", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "12px" }}>
-                <button 
-                  className={`nav-link ${subTab === 'upcoming' ? 'active' : ''}`} 
-                  onClick={() => setSubTab('upcoming')}
-                  style={{ border: "none", background: "none", cursor: "pointer", fontWeight: 700 }}
-                >Upcoming</button>
-                <button 
-                  className={`nav-link ${subTab === 'past' ? 'active' : ''}`} 
-                  onClick={() => setSubTab('past')}
-                  style={{ border: "none", background: "none", cursor: "pointer", fontWeight: 700 }}
-                >Past Events</button>
+            <div style={{ marginBottom: "30px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <button className={`btn-neon ${subTab === 'upcoming' ? 'primary' : ''}`} onClick={() => setSubTab('upcoming')}>Upcoming Events</button>
+                <button className={`btn-neon ${subTab === 'past' ? 'primary' : ''}`} onClick={() => setSubTab('past')}>Past Events</button>
             </div>
 
             {loading ? (
@@ -213,32 +210,41 @@ const Events = () => {
                     {filteredEvents.map((ev, i) => {
                         const isExpired = new Date() > new Date(ev.endDate || ev.date);
                         return (
-                            <motion.div 
-                              key={ev._id} 
-                              variants={cardVariants} 
-                              className="card" 
-                              style={{ 
-                                padding: 0, overflow: "hidden", display: "flex", 
-                                flexDirection: "column", cursor: "pointer", 
-                                filter: isExpired ? 'grayscale(0.6) opacity(0.8)' : 'none' 
-                              }}
-                              onClick={() => openDetailsModal(ev)}
+                            <motion.div key={ev._id} variants={cardVariants} className="glass-panel" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", transition: "transform var(--transition-fast), box-shadow var(--transition-fast)", cursor: "pointer", filter: isExpired ? 'grayscale(0.6) opacity(0.8)' : 'none' }}
+                                whileHover={isExpired ? {} : { scale: 1.03, boxShadow: "0 15px 40px rgba(112,0,255,0.2)" }}
                             >
                                 <div style={{ height: "200px", position: "relative", overflow: "hidden" }}>
-                                    <img src={ev.image || placeholderImages[i % placeholderImages.length]} alt={ev.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                    <div style={{ position: "absolute", top: "12px", right: "12px", background: "var(--bg-secondary)", padding: "4px 12px", borderRadius: "100px", fontSize: "0.75rem", fontWeight: 700, border: "1px solid var(--border-subtle)" }}>
+                                    <img src={ev.image || placeholderImages[i % placeholderImages.length]} alt={ev.title} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s ease" }} className="event-img" />
+                                    {ev.volunteers && ev.volunteers.some(v => (v._id || v) === user._id) && (
+                                        <div
+                                            style={{
+                                                position: "absolute", top: "15px", left: "15px",
+                                                background: "var(--accent-purple)", width: "14px", height: "14px",
+                                                borderRadius: "50%", boxShadow: "var(--shadow-neon)",
+                                                border: "2px solid #fff", zIndex: 10
+                                            }}
+                                            title="You are a volunteer"
+                                        />
+                                    )}
+                                    <div style={{ position: "absolute", top: "15px", right: "15px", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(5px)", padding: "5px 12px", borderRadius: "20px", fontSize: "0.8rem", color: "var(--accent-cyan)", border: "1px solid rgba(0,212,255,0.3)" }}>
                                         {ev.location?.name || "TBD"}
                                     </div>
                                 </div>
                                 <div style={{ padding: "20px", display: "flex", flexDirection: "column", flexGrow: 1 }}>
-                                    <h3 style={{ margin: "0 0 8px", fontSize: "1.25rem" }}>{ev.title}</h3>
-                                    <div style={{ color: "var(--text-muted)", marginBottom: "20px", fontSize: "0.85rem", fontWeight: 500 }}>
-                                        {new Date(ev.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                                    <h3 style={{ margin: "0 0 10px", fontSize: "1.4rem", color: "var(--text-primary)" }}>{ev.title}</h3>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-muted)", marginBottom: "20px", fontSize: "0.9rem" }}>
+                                        Date: {new Date(ev.date).toLocaleDateString()}
                                     </div>
-                                    <div style={{ marginTop: "auto" }}>
-                                         <button className="btn-neon primary" style={{ width: "100%", padding: "8px" }}>
-                                            View Details
-                                        </button>
+                                    <div style={{ marginTop: "auto", display: "flex", gap: "10px", flexDirection: "column" }}>
+                                        <div style={{ display: "flex", gap: "10px" }}>
+                                            <button
+                                                className="btn-neon w-100"
+                                                style={{ padding: "8px", fontSize: "0.9rem", background: "rgba(0,212,255,0.1)" }}
+                                                onClick={() => openDetailsModal(ev)}
+                                            >
+                                                View Details
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </motion.div>
