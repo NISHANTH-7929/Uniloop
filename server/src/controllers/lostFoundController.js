@@ -19,14 +19,65 @@ const handleError = (res, err) => {
 // POST /lostfound
 export const createItem = async (req, res) => {
     try {
-        const { type, title, description, category, locationTag, imageUrl,
-                isAnonymous, claimQuestion, claimAnswer } = req.body;
+        let { type, title, description, category, locationTag, imageUrl,
+              isAnonymous, claimQuestion, claimAnswer } = req.body;
 
-        if (!imageUrl) {
-            return res.status(400).json({ success: false, message: "An image is required for all lost & found submissions." });
+        // Trim string fields
+        title = title?.trim();
+        description = description?.trim();
+        locationTag = locationTag?.trim();
+        claimQuestion = claimQuestion?.trim();
+        claimAnswer = claimAnswer?.trim();
+
+        // Validate imageUrl - MANDATORY
+        if (!imageUrl || typeof imageUrl !== "string") {
+            console.warn("Lost & Found submission failed: missing or invalid imageUrl type", { userId: req.user._id });
+            return res.status(400).json({ 
+                success: false, 
+                message: "A photo is required for all lost & found submissions. Please upload an image." 
+            });
         }
+
+        // Check image is not empty or just whitespace
+        imageUrl = imageUrl.trim();
+        if (imageUrl.length === 0) {
+            console.warn("Lost & Found submission failed: empty imageUrl", { userId: req.user._id });
+            return res.status(400).json({ 
+                success: false, 
+                message: "A photo is required for all lost & found submissions. Please upload an image." 
+            });
+        }
+
+        // Validate imageUrl format (should be base64 data URL or HTTPS URL)
+        if (!imageUrl.startsWith("data:image/") && !imageUrl.startsWith("https://") && !imageUrl.startsWith("http://")) {
+            console.warn("Lost & Found submission failed: invalid imageUrl format", { userId: req.user._id, imagePrefix: imageUrl.substring(0, 30) });
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid image format. Please ensure you're uploading a valid image file." 
+            });
+        }
+
+        // Check minimum image data length (base64 data URLs should be at least 50+ chars)
+        if (imageUrl.startsWith("data:image/") && imageUrl.length < 50) {
+            console.warn("Lost & Found submission failed: image data too small", { userId: req.user._id, length: imageUrl.length });
+            return res.status(400).json({ 
+                success: false, 
+                message: "Image data appears to be incomplete or corrupted. Please re-upload the image." 
+            });
+        }
+        
+        if (!type || !title || !description || !category || !locationTag) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Missing required fields: type, title, description, category, or locationTag" 
+            });
+        }
+        
         if (type === "found" && (!claimQuestion || !claimAnswer)) {
-            return res.status(400).json({ success: false, message: "A claim question and answer are mandatory for found items." });
+            return res.status(400).json({ 
+                success: false, 
+                message: "A claim question and answer are mandatory for found items." 
+            });
         }
 
         let answerHash = null;
@@ -48,6 +99,7 @@ export const createItem = async (req, res) => {
         // Smart match — fire and forget
         runLostFoundMatch(item).catch(() => {});
 
+        console.log("Lost & Found item created:", { itemId: item._id, userId: req.user._id, type });
         return res.status(201).json({ success: true, data: item });
     } catch (err) { return handleError(res, err); }
 };
@@ -270,8 +322,27 @@ export const reportFound = async (req, res) => {
         if (item.type !== "lost") return res.status(400).json({ success: false, message: "Can only report finding a 'lost' item" });
         if (item.status !== "active") return res.status(400).json({ success: false, message: "Item is not active" });
 
-        const { imageUrl, message } = req.body;
-        if (!imageUrl) return res.status(400).json({ success: false, message: "Image is required to verify you found it" });
+        let { imageUrl, message } = req.body;
+        
+        // Validate and normalize imageUrl
+        if (!imageUrl || typeof imageUrl !== "string") {
+            return res.status(400).json({ success: false, message: "Image is required to verify you found it" });
+        }
+        
+        imageUrl = imageUrl.trim();
+        if (imageUrl.length === 0) {
+            return res.status(400).json({ success: false, message: "Image is required to verify you found it" });
+        }
+        
+        // Validate imageUrl format
+        if (!imageUrl.startsWith("data:image/") && !imageUrl.startsWith("https://") && !imageUrl.startsWith("http://")) {
+            return res.status(400).json({ success: false, message: "Invalid image format. Please ensure you're uploading a valid image file." });
+        }
+        
+        // Check minimum image data length
+        if (imageUrl.startsWith("data:image/") && imageUrl.length < 50) {
+            return res.status(400).json({ success: false, message: "Image data appears to be incomplete or corrupted. Please re-upload the image." });
+        }
 
         item.foundReports.push({
             reporter: req.user._id,

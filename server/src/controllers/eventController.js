@@ -4,6 +4,7 @@ import Ticket from "../models/Ticket.js";
 import Notification from "../models/Notification.js";
 import RoleTransition from "../models/RoleTransition.js";
 import AttendanceLog from "../models/AttendanceLog.js";
+import { eventsCache, eventDetailsCache, CACHE_KEYS, CACHE_TTL, invalidateEventCache } from "../utils/cache.js";
 
 // @desc    Create a new event
 // @route   POST /api/events
@@ -21,6 +22,9 @@ export const createEvent = async (req, res) => {
         const eventData = { ...req.body, organizer: req.user._id };
         const event = await Event.create(eventData);
 
+        // Invalidate cache since we have a new event
+        invalidateEventCache();
+
         res.status(201).json(event);
     } catch (error) {
         console.error("Create event error:", error);
@@ -33,13 +37,60 @@ export const createEvent = async (req, res) => {
 // @access  Private
 export const getEvents = async (req, res) => {
     try {
-        const events = await Event.find()
-            .select('-additionalMedia -updates -subevents.updates -subevents.additionalMedia')
+        // Parse query parameters for filtering and pagination
+        const { status, organizer, limit = 50, skip = 0, sort = 'date' } = req.query;
+
+        // Create cache key based on query parameters
+        const cacheKey = `${CACHE_KEYS.ALL_EVENTS}_${status || 'all'}_${organizer || 'all'}_${limit}_${skip}_${sort}`;
+
+        // Check cache first (only for first page to avoid cache misses)
+        if (skip === '0' || skip === 0) {
+            const cachedEvents = eventsCache.get(cacheKey);
+            if (cachedEvents) {
+                console.log('Serving events from cache');
+                return res.json(cachedEvents);
+            }
+        }
+
+        console.log('Fetching events from database');
+
+        // Build query object
+        const query = {};
+        if (status) query.status = status;
+        if (organizer) query.organizer = organizer;
+
+        // Optimized query: select only essential fields and limit population
+        const events = await Event.find(query)
+            .select('title description date endDate location.name organizer partOrganizers image status subevents.title subevents.date subevents.capacity subevents.registeredCount')
             .populate('organizer', 'email role')
             .populate('partOrganizers', 'email role')
-            .populate('volunteers.user', 'email role');
-        res.json(events);
+            .sort({ [sort]: sort === 'createdAt' ? -1 : 1 }) // Sort by specified field
+            .limit(parseInt(limit)) // Limit results
+            .skip(parseInt(skip)) // Skip for pagination
+            .lean(); // Use lean() for better performance (returns plain objects)
+
+        // Get total count for pagination info
+        const total = await Event.countDocuments(query);
+
+        const result = {
+            events,
+            pagination: {
+                total,
+                limit: parseInt(limit),
+                skip: parseInt(skip),
+                hasMore: total > parseInt(skip) + events.length
+            }
+        };
+
+        // Cache only first page results
+        if (skip === '0' || skip === 0) {
+            eventsCache.set(cacheKey, result, CACHE_TTL.EVENTS_LIST);
+        }
+
+        console.log(`Fetched ${events.length} events (${total} total)`);
+        res.json(result);
     } catch (error) {
+        console.error('Get events error:', error);
         res.status(500).json({ message: 'Server error fetching events' });
     }
 };
@@ -49,17 +100,35 @@ export const getEvents = async (req, res) => {
 // @access  Private
 export const getEventById = async (req, res) => {
     try {
-        const event = await Event.findById(req.params.id)
+        const eventId = req.params.id;
+        const cacheKey = CACHE_KEYS.EVENT_DETAIL(eventId);
+
+        // Check cache first
+        const cachedEvent = eventDetailsCache.get(cacheKey);
+        if (cachedEvent) {
+            console.log(`Serving event ${eventId} from cache`);
+            return res.json(cachedEvent);
+        }
+
+        console.log(`Fetching event ${eventId} from database`);
+
+        const event = await Event.findById(eventId)
             .populate('organizer', 'email role')
             .populate('partOrganizers', 'email role')
-            .populate('volunteers.user', 'email role');
+            .populate('volunteers.user', 'email role')
+            .lean();
 
         if (!event) {
             return res.status(404).json({ message: "Event not found" });
         }
 
+        // Cache the result
+        eventDetailsCache.set(cacheKey, event, CACHE_TTL.EVENT_DETAIL);
+
+        console.log(`Cached event ${eventId}`);
         res.json(event);
     } catch (error) {
+        console.error('Get event by ID error:', error);
         res.status(500).json({ message: "Server error fetching event" });
     }
 };
@@ -100,6 +169,9 @@ export const addSubevent = async (req, res) => {
         event.subevents.push(sub);
         await event.save();
 
+        // Invalidate cache for this event
+        invalidateEventCache(event._id.toString());
+
         res.status(201).json({ message: 'Subevent added', subevent: event.subevents[event.subevents.length - 1] });
     } catch (error) {
         console.error('Add subevent error:', error);
@@ -123,6 +195,9 @@ export const addEventUpdate = async (req, res) => {
         event.updates = event.updates || [];
         event.updates.unshift({ title, text, attachments });
         await event.save();
+
+        // Invalidate cache for this event
+        invalidateEventCache(event._id.toString());
 
         // Notify all registered users (tickets) and volunteers
         const tickets = await Ticket.find({ event: event._id }).select('user');

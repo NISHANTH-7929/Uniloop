@@ -127,4 +127,11 @@ const eventSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+// Add indexes for better query performance
+eventSchema.index({ date: 1 }); // For sorting by date
+eventSchema.index({ status: 1 }); // For filtering by status
+eventSchema.index({ organizer: 1 }); // For organizer queries
+eventSchema.index({ 'subevents.date': 1 }); // For subevent date queries
+eventSchema.index({ createdAt: -1 }); // For recent events
+
 export default mongoose.model("Event", eventSchema);

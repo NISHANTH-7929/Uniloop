@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchEvents, registerEvent, assignVolunteer, getMyTickets } from "../api/events";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +14,7 @@ const Events = () => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [subTab, setSubTab] = useState('upcoming'); // 'upcoming' | 'past'
     const [myTickets, setMyTickets] = useState([]);
+    const [pagination, setPagination] = useState(null);
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [selectedEventId, setSelectedEventId] = useState(null);
     const [volunteerEmail, setVolunteerEmail] = useState("");
@@ -38,13 +39,30 @@ const Events = () => {
     useEffect(() => {
         // Load cached events (if any) immediately so UI isn't empty while fetching.
         const cached = localStorage.getItem('cachedEvents');
-        if (cached) {
-            try {
-                setEvents(JSON.parse(cached));
-                setLoading(false);
-            } catch (e) { }
+        const cacheTimestamp = localStorage.getItem('eventsCacheTimestamp');
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+        if (cached && cacheTimestamp) {
+            const cacheAge = Date.now() - parseInt(cacheTimestamp);
+            if (cacheAge < CACHE_DURATION) {
+                try {
+                    const parsedEvents = JSON.parse(cached);
+                    setEvents(parsedEvents);
+                    setLoading(false);
+                    console.log('Loaded events from localStorage cache');
+                } catch (e) {
+                    console.error('Error parsing cached events:', e);
+                    localStorage.removeItem('cachedEvents');
+                    localStorage.removeItem('eventsCacheTimestamp');
+                }
+            } else {
+                // Cache is stale, remove it
+                localStorage.removeItem('cachedEvents');
+                localStorage.removeItem('eventsCacheTimestamp');
+            }
         }
-        // If we had cached events, perform a background refresh; otherwise show initial loader.
+
+        // Always fetch fresh data in background, but only show loading if no cache
         loadEvents(!cached);
     }, []);
 
@@ -54,22 +72,66 @@ const Events = () => {
             if (initial) setLoading(true);
             else setIsRefreshing(true);
 
-            const [eventsRes, ticketsRes] = await Promise.all([
-                fetchEvents(),
-                getMyTickets()
-            ]);
+            const eventsRes = await fetchEvents();
+            let ticketsRes;
+            try {
+                ticketsRes = await getMyTickets();
+            } catch (ticketErr) {
+                ticketsRes = { data: [] };
+            }
 
-            const data = eventsRes.data;
+            const data = eventsRes.data?.events || eventsRes.data || [];
+            const paginationData = eventsRes.data?.pagination;
             setEvents(data);
-            setMyTickets(ticketsRes.data);
+            setPagination(paginationData);
+            setMyTickets(ticketsRes.data || []);
             // Cache events locally to show immediately on next load
-            try { localStorage.setItem('cachedEvents', JSON.stringify(data)); } catch (e) { }
+            try { 
+                localStorage.setItem('cachedEvents', JSON.stringify(data));
+                localStorage.setItem('eventsCacheTimestamp', Date.now().toString());
+                console.log(`Cached ${data.length} events in localStorage`);
+            } catch (e) { }
             // Mark events as seen shortly after load to allow dot to show briefly
             setTimeout(() => { try { localStorage.setItem('seenEventsCount', data.length); } catch (e) { } }, 1500);
         } catch (error) {
-            toast.error("Failed to load events");
+            console.error('Failed to load events:', error);
+            const errorMessage = error.response?.data?.message || error.message || "Failed to load events";
+
+            // If we have cached data and this is an initial load, don't show error
+            if (initial && localStorage.getItem('cachedEvents')) {
+                console.log('Using cached events due to network error');
+                toast.warn("Using cached events. Some data may be outdated.");
+            } else {
+                toast.error(errorMessage);
+            }
         } finally {
             setLoading(false);
+            setIsRefreshing(false);
+        }
+    };
+
+    const loadMoreEvents = async () => {
+        if (!pagination || isRefreshing) return;
+
+        try {
+            setIsRefreshing(true);
+            console.log('Loading more events...');
+
+            const eventsRes = await fetchEvents({
+                skip: events.length,
+                limit: pagination.limit
+            });
+
+            if (eventsRes.data?.events) {
+                const newEvents = eventsRes.data.events;
+                setEvents(prev => [...prev, ...newEvents]);
+                setPagination(eventsRes.data.pagination);
+                console.log(`Loaded ${newEvents.length} more events`);
+            }
+        } catch (error) {
+            console.error('Failed to load more events:', error);
+            toast.error("Failed to load more events");
+        } finally {
             setIsRefreshing(false);
         }
     };
@@ -115,21 +177,23 @@ const Events = () => {
         }
     };
 
-    const filteredEvents = events.filter((ev) => {
-        const isFinished = ev.status === 'finished' || (ev.endDate && new Date() > new Date(ev.endDate));
-        const isLive = !isFinished && new Date() >= new Date(ev.date) && (!ev.endDate || new Date() <= new Date(ev.endDate));
-        const isUpcoming = !isFinished && !isLive;
+    const filteredEvents = useMemo(() => {
+        return events.filter((ev) => {
+            const isFinished = ev.status === 'finished' || (ev.endDate && new Date() > new Date(ev.endDate));
+            const isLive = !isFinished && new Date() >= new Date(ev.date) && (!ev.endDate || new Date() <= new Date(ev.endDate));
+            const isUpcoming = !isFinished && !isLive;
 
-        if (subTab === "upcoming") {
-            return !isFinished;
-        }
+            if (subTab === "upcoming") {
+                return !isFinished;
+            }
 
-        if (subTab === "past") {
-            return isFinished;
-        }
+            if (subTab === "past") {
+                return isFinished;
+            }
 
-        return true;
-    });
+            return true;
+        });
+    }, [events, subTab]);
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -186,9 +250,18 @@ const Events = () => {
                 </div>
             </motion.div>
 
-            <div style={{ marginBottom: "30px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <div style={{ marginBottom: "30px", display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
                 <button className={`btn-neon ${subTab === 'upcoming' ? 'primary' : ''}`} onClick={() => setSubTab('upcoming')}>Upcoming Events</button>
                 <button className={`btn-neon ${subTab === 'past' ? 'primary' : ''}`} onClick={() => setSubTab('past')}>Past Events</button>
+                <button 
+                    className="btn-neon" 
+                    onClick={() => loadEvents(false)} 
+                    disabled={isRefreshing}
+                    style={{ fontSize: '0.8rem', padding: '6px 12px', opacity: isRefreshing ? 0.6 : 1 }}
+                    title="Refresh events"
+                >
+                    {isRefreshing ? '🔄' : '↻'} Refresh
+                </button>
             </div>
 
             {loading ? (
@@ -250,6 +323,20 @@ const Events = () => {
                     {filteredEvents.length === 0 && (
                         <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px", color: "var(--text-muted)", fontSize: "1.1rem" }}>
                             No cosmic events found for this view.
+                        </div>
+                    )}
+
+                    {/* Load More Button */}
+                    {pagination?.hasMore && (
+                        <div style={{ gridColumn: "1/-1", textAlign: "center", marginTop: "30px" }}>
+                            <button
+                                className="btn-neon primary"
+                                onClick={() => loadMoreEvents()}
+                                disabled={isRefreshing}
+                                style={{ padding: "12px 24px" }}
+                            >
+                                {isRefreshing ? 'Loading...' : 'Load More Events'}
+                            </button>
                         </div>
                     )}
                 </motion.div>

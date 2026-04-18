@@ -9,6 +9,7 @@ import app from "./src/app.js";
 import connectDB from "./src/config/db.js";
 import Conversation from "./src/models/Conversation.js";
 import setupCronJobs from "./src/utils/cronJobs.js";
+import { setupCacheInvalidation } from "./src/utils/cache.js";
 import { setIO } from "./src/utils/socketUtils.js";
 
 connectDB();
@@ -98,4 +99,5 @@ app.get("/api", (req, res) => {
 server.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
     setupCronJobs();
+    setupCacheInvalidation();
 });
