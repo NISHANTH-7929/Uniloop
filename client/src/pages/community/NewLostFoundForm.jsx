@@ -39,24 +39,70 @@ const NewLostFoundForm = () => {
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        if (file.size > 5 * 1024 * 1024) { setError("Image must be under 5 MB."); return; }
+        
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+            setError("Please select a valid image file (JPG, PNG, etc.).");
+            return;
+        }
+        
+        // Validate file size
+        const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+        if (file.size > MAX_SIZE) {
+            setError(`Image must be under 5 MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)} MB.`);
+            return;
+        }
+        
         const reader = new FileReader();
-        reader.onloadend = () => {
-            setImageData(reader.result); // base64 data URL
-            setImagePreview(reader.result);
+        reader.onerror = () => {
+            setError("Failed to read the image file. Please try again.");
+            console.error("FileReader error:", reader.error);
         };
-        reader.readAsDataURL(file);
+        reader.onabort = () => {
+            setError("Image reading was cancelled. Please try again.");
+        };
+        reader.onloadend = () => {
+            if (reader.result && reader.result.length > 0) {
+                setImageData(reader.result); // base64 data URL
+                setImagePreview(reader.result);
+                setError(""); // Clear any previous errors
+            } else {
+                setError("Failed to process the image. Please try again.");
+            }
+        };
+        
+        try {
+            reader.readAsDataURL(file);
+        } catch (err) {
+            setError("Error reading image: " + err.message);
+            console.error("FileReader exception:", err);
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
+        
+        // Validate all required fields
         if (!form.title.trim()) { setError("Title is required"); return; }
         if (!form.description.trim()) { setError("Description is required"); return; }
         if (!form.locationTag.trim()) { setError("Location is required"); return; }
-        if (!imageData) { setError("A photo is required for all posts."); return; }
+        
+        // Validate imageData exists and is not empty
+        if (!imageData || imageData.trim().length === 0) { 
+            setError("A photo is required for all posts. Please select an image."); 
+            return; 
+        }
+        
+        // Verify imageData looks like valid base64
+        if (!imageData.startsWith("data:image/")) {
+            setError("Invalid image data. The image may be corrupted. Please try uploading again.");
+            return;
+        }
+        
         if (form.type === "found" && (!form.claimQuestion.trim() || !form.claimAnswer.trim())) {
-            setError("A claim verification question and answer are mandatory for found items."); return;
+            setError("A claim verification question and answer are mandatory for found items."); 
+            return;
         }
 
         setLoading(true);
@@ -68,7 +114,7 @@ const NewLostFoundForm = () => {
                 description:form.description.trim(),
                 category:   form.category,
                 locationTag:form.locationTag.trim(),
-                imageUrl:   imageData,
+                imageUrl:   imageData, // Base64 encoded image
                 isAnonymous:form.isAnonymous,
             };
             if (form.type === "found" && form.claimQuestion.trim()) {
@@ -76,11 +122,17 @@ const NewLostFoundForm = () => {
                 payload.claimAnswer = form.claimAnswer.trim();
             }
 
+            console.debug("Lost & Found submission payload:", {
+                ...payload,
+                imageUrl: payload.imageUrl ? `${payload.imageUrl.substring(0, 50)}... (${payload.imageUrl.length} bytes)` : "missing"
+            });
+
             await createLostFoundItem(payload);
             toast.success("✅ Item posted successfully!");
             navigate("/community/lostfound");
         } catch (err) {
-            const msg = err.response?.data?.message || "Failed to post item. Please try again.";
+            const msg = err.response?.data?.message || err.message || "Failed to post item. Please try again.";
+            console.error("Lost & Found submission error:", err);
             setError(msg);
             toast.error(msg);
         }
@@ -335,14 +387,15 @@ const NewLostFoundForm = () => {
                         <button
                             id="lf-submit-btn"
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || !imageData}
+                            title={!imageData ? "A photo is required before posting" : ""}
                             style={{
                                 padding: "15px",
-                                background: loading ? "rgba(255,255,255,0.08)" : "linear-gradient(135deg, #7000ff, #00d4ff)",
-                                border: "none", borderRadius: "12px", color: "#fff",
+                                background: loading || !imageData ? "rgba(255,255,255,0.08)" : "linear-gradient(135deg, #7000ff, #00d4ff)",
+                                border: "none", borderRadius: "12px", color: loading || !imageData ? "rgba(255,255,255,0.4)" : "#fff",
                                 fontWeight: "700", fontSize: "1rem",
-                                cursor: loading ? "not-allowed" : "pointer",
-                                boxShadow: loading ? "none" : "0 4px 20px rgba(112,0,255,0.35)",
+                                cursor: loading || !imageData ? "not-allowed" : "pointer",
+                                boxShadow: loading || !imageData ? "none" : "0 4px 20px rgba(112,0,255,0.35)",
                                 transition: "all 0.2s",
                             }}
                         >

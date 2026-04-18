@@ -36,7 +36,7 @@ API.interceptors.response.use(
 );
 
 // Event APIs
-export const fetchEvents = () => API.get("/events");
+export const fetchEvents = (params = {}) => API.get("/events", { params });
 export const createEvent = (eventData) => API.post("/events", eventData);
 export const getEvent = (id) => API.get(`/events/${id}`);
 export const updateEvent = (id, eventData) => API.put(`/events/${id}`, eventData);
