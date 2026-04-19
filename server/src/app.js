@@ -18,6 +18,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import communityRoutes from "./routes/community.js";
 import dormdashRoutes from "./routes/dormdash.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 const app = express();
 
@@ -64,6 +65,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/community", communityRoutes);
 app.use("/api/dormdash", dormdashRoutes);
+app.use("/api/upload", uploadRoutes);
 
 app.get("/", (req, res) => {
     res.status(200).json({ message: "UniLoop Backend running..." });

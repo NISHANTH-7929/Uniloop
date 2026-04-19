@@ -5,6 +5,7 @@ import Notification from "../models/Notification.js";
 import { getIO } from "../utils/socketUtils.js";
 import { runLostFoundMatch } from "../utils/matchUtils.js";
 import { checkAndAwardBadges } from "../utils/communityBadgeUtils.js";
+import { deleteFromCloudinary } from "../config/cloudinary.js";
 
 const USER_SELECT = "-password -communitySupport.moodLogs -communitySupport.counselorBookings";
 
@@ -19,8 +20,11 @@ const handleError = (res, err) => {
 // POST /lostfound
 export const createItem = async (req, res) => {
     try {
-        let { type, title, description, category, locationTag, imageUrl,
+        let { type, title, description, category, locationTag,
               isAnonymous, claimQuestion, claimAnswer } = req.body;
+        
+        let imageUrl = req.file ? req.file.path : req.body.imageUrl;
+        let imagePublicId = req.file ? req.file.filename : null;
 
         // Trim string fields
         title = title?.trim();
@@ -28,8 +32,6 @@ export const createItem = async (req, res) => {
         locationTag = locationTag?.trim();
         claimQuestion = claimQuestion?.trim();
         claimAnswer = claimAnswer?.trim();
-
-        // Validate imageUrl - MANDATORY
         if (!imageUrl || typeof imageUrl !== "string") {
             console.warn("Lost & Found submission failed: missing or invalid imageUrl type", { userId: req.user._id });
             return res.status(400).json({ 
@@ -38,7 +40,7 @@ export const createItem = async (req, res) => {
             });
         }
 
-        // Check image is not empty or just whitespace
+        // Check image is not empty
         imageUrl = imageUrl.trim();
         if (imageUrl.length === 0) {
             console.warn("Lost & Found submission failed: empty imageUrl", { userId: req.user._id });
@@ -47,24 +49,7 @@ export const createItem = async (req, res) => {
                 message: "A photo is required for all lost & found submissions. Please upload an image." 
             });
         }
-
-        // Validate imageUrl format (should be base64 data URL or HTTPS URL)
-        if (!imageUrl.startsWith("data:image/") && !imageUrl.startsWith("https://") && !imageUrl.startsWith("http://")) {
-            console.warn("Lost & Found submission failed: invalid imageUrl format", { userId: req.user._id, imagePrefix: imageUrl.substring(0, 30) });
-            return res.status(400).json({ 
-                success: false, 
-                message: "Invalid image format. Please ensure you're uploading a valid image file." 
-            });
-        }
-
-        // Check minimum image data length (base64 data URLs should be at least 50+ chars)
-        if (imageUrl.startsWith("data:image/") && imageUrl.length < 50) {
-            console.warn("Lost & Found submission failed: image data too small", { userId: req.user._id, length: imageUrl.length });
-            return res.status(400).json({ 
-                success: false, 
-                message: "Image data appears to be incomplete or corrupted. Please re-upload the image." 
-            });
-        }
+        
         
         if (!type || !title || !description || !category || !locationTag) {
             return res.status(400).json({ 
@@ -90,6 +75,7 @@ export const createItem = async (req, res) => {
             isAnonymous: !!isAnonymous,
             type, title, description, category, locationTag,
             imageUrl,
+            imagePublicId,
             claimVerification: {
                 question: claimQuestion || null,
                 answerHash,
@@ -101,7 +87,12 @@ export const createItem = async (req, res) => {
 
         console.log("Lost & Found item created:", { itemId: item._id, userId: req.user._id, type });
         return res.status(201).json({ success: true, data: item });
-    } catch (err) { return handleError(res, err); }
+    } catch (err) {
+        if (req.file && req.file.filename) {
+            deleteFromCloudinary(req.file.filename).catch(console.error);
+        }
+        return handleError(res, err);
+    }
 };
 
 // GET /lostfound
@@ -322,7 +313,9 @@ export const reportFound = async (req, res) => {
         if (item.type !== "lost") return res.status(400).json({ success: false, message: "Can only report finding a 'lost' item" });
         if (item.status !== "active") return res.status(400).json({ success: false, message: "Item is not active" });
 
-        let { imageUrl, message } = req.body;
+        let { message } = req.body;
+        let imageUrl = req.file ? req.file.path : req.body.imageUrl;
+        let imagePublicId = req.file ? req.file.filename : null;
         
         // Validate and normalize imageUrl
         if (!imageUrl || typeof imageUrl !== "string") {
@@ -333,20 +326,11 @@ export const reportFound = async (req, res) => {
         if (imageUrl.length === 0) {
             return res.status(400).json({ success: false, message: "Image is required to verify you found it" });
         }
-        
-        // Validate imageUrl format
-        if (!imageUrl.startsWith("data:image/") && !imageUrl.startsWith("https://") && !imageUrl.startsWith("http://")) {
-            return res.status(400).json({ success: false, message: "Invalid image format. Please ensure you're uploading a valid image file." });
-        }
-        
-        // Check minimum image data length
-        if (imageUrl.startsWith("data:image/") && imageUrl.length < 50) {
-            return res.status(400).json({ success: false, message: "Image data appears to be incomplete or corrupted. Please re-upload the image." });
-        }
 
         item.foundReports.push({
             reporter: req.user._id,
             imageUrl,
+            imagePublicId,
             message
         });
         await item.save();
@@ -368,5 +352,10 @@ export const reportFound = async (req, res) => {
             } catch (_) {}
         }
         return res.json({ success: true, message: "Report sent to the owner." });
-    } catch (err) { return handleError(res, err); }
+    } catch (err) {
+        if (req.file && req.file.filename) {
+            deleteFromCloudinary(req.file.filename).catch(console.error);
+        }
+        return handleError(res, err);
+    }
 };

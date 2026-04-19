@@ -2,6 +2,7 @@ import QAPost from "../models/QAPost.js";
 import User from "../models/User.js";
 import { getIO } from "../utils/socketUtils.js";
 import { checkAndAwardBadges } from "../utils/communityBadgeUtils.js";
+import { deleteFromCloudinary } from "../config/cloudinary.js";
 
 const handleError = (res, err) => {
     if (err.name === "CastError") return res.status(400).json({ success: false, message: "Invalid ID format" });
@@ -19,9 +20,19 @@ const getBatchYear = (email) => {
 // POST /qa
 export const createQuestion = async (req, res) => {
     try {
-        const post = await QAPost.create({ author: req.user._id, ...req.body });
+        const bodyData = { ...req.body };
+        if (req.file) {
+            bodyData.imageUrl = req.file.path;
+            bodyData.imagePublicId = req.file.filename;
+        }
+        const post = await QAPost.create({ author: req.user._id, ...bodyData });
         return res.status(201).json({ success: true, data: post });
-    } catch (err) { return handleError(res, err); }
+    } catch (err) {
+        if (req.file && req.file.filename) {
+            deleteFromCloudinary(req.file.filename).catch(console.error);
+        }
+        return handleError(res, err);
+    }
 };
 
 // GET /qa
@@ -70,7 +81,8 @@ export const postAnswer = async (req, res) => {
         const answer = {
             author:           req.user._id,
             body:             req.body.body,
-            imageUrl:         req.body.imageUrl || null,
+            imageUrl:         req.file ? req.file.path : (req.body.imageUrl || null),
+            imagePublicId:    req.file ? req.file.filename : null,
             isVerifiedSenior,
         };
 
@@ -86,7 +98,12 @@ export const postAnswer = async (req, res) => {
         } catch (_) {}
 
         return res.status(201).json({ success: true, data: post.answers[post.answers.length - 1] });
-    } catch (err) { return handleError(res, err); }
+    } catch (err) {
+        if (req.file && req.file.filename) {
+            deleteFromCloudinary(req.file.filename).catch(console.error);
+        }
+        return handleError(res, err);
+    }
 };
 
 // PATCH /qa/:id/answer/:answerId/upvote
@@ -180,6 +197,14 @@ export const deleteQuestion = async (req, res) => {
         if (post.author.toString() !== req.user._id.toString() && req.user.role !== "admin") {
             return res.status(403).json({ success: false, message: "Not authorised" });
         }
+        
+        if (post.imagePublicId) {
+            deleteFromCloudinary(post.imagePublicId).catch(console.error);
+        }
+        post.answers.forEach(a => {
+            if (a.imagePublicId) deleteFromCloudinary(a.imagePublicId).catch(console.error);
+        });
+        
         await post.deleteOne();
         return res.json({ success: true, message: "Question deleted" });
     } catch (err) { return handleError(res, err); }
@@ -195,6 +220,11 @@ export const deleteAnswer = async (req, res) => {
         if (answer.author.toString() !== req.user._id.toString() && req.user.role !== "admin") {
             return res.status(403).json({ success: false, message: "Not authorised" });
         }
+        
+        if (answer.imagePublicId) {
+            deleteFromCloudinary(answer.imagePublicId).catch(console.error);
+        }
+        
         answer.deleteOne();
         await post.save();
         return res.json({ success: true, message: "Answer deleted" });

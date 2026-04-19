@@ -1,5 +1,6 @@
 import Notice from "../models/Notice.js";
 import { getIO } from "../utils/socketUtils.js";
+import { deleteFromCloudinary } from "../config/cloudinary.js";
 
 const handleError = (res, err) => {
     if (err.name === "CastError") return res.status(400).json({ success: false, message: "Invalid ID format" });
@@ -15,10 +16,16 @@ export const createNotice = async (req, res) => {
             return res.status(403).json({ success: false, message: "Only administrators and official personnel can post campus notices" });
         }
 
+        const bodyData = { ...req.body };
+        if (req.file) {
+            bodyData.imageUrl = req.file.path;
+            bodyData.imagePublicId = req.file.filename;
+        }
+
         const notice = await Notice.create({
             postedBy:   req.user._id,
             posterRole: req.user.role,
-            ...req.body,
+            ...bodyData,
         });
 
         // Broadcast new notice socket event
@@ -33,7 +40,12 @@ export const createNotice = async (req, res) => {
         } catch (_) {}
 
         return res.status(201).json({ success: true, data: notice });
-    } catch (err) { return handleError(res, err); }
+    } catch (err) {
+        if (req.file && req.file.filename) {
+            deleteFromCloudinary(req.file.filename).catch(console.error);
+        }
+        return handleError(res, err);
+    }
 };
 
 // GET /notices
@@ -70,6 +82,11 @@ export const deleteNotice = async (req, res) => {
         if (notice.postedBy.toString() !== req.user._id.toString() && req.user.role !== "admin") {
             return res.status(403).json({ success: false, message: "Not authorised" });
         }
+        
+        if (notice.imagePublicId) {
+            deleteFromCloudinary(notice.imagePublicId).catch(console.error);
+        }
+        
         await notice.deleteOne();
         return res.json({ success: true, message: "Notice deleted" });
     } catch (err) { return handleError(res, err); }

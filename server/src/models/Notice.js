@@ -8,6 +8,7 @@ const noticeSchema = new Schema({
     title:      { type: String, required: true },
     body:       { type: String, required: true },
     imageUrl:   { type: String, default: null },
+    imagePublicId:{ type: String, default: null },
     targetDept: { type: String, default: "all" },
     targetYear: { type: Number, default: 0 },
     targetBlock:{ type: String, default: "all" },
