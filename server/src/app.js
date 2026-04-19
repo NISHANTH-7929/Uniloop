@@ -22,17 +22,28 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 
 const app = express();
 
+// Build allowed origins list — always include localhost for dev/testing
+const allowedOrigins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://novella-mothier-clyde.ngrok-free.dev",
+];
+if (process.env.CLIENT_URL) allowedOrigins.push(process.env.CLIENT_URL);
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, Postman, server-to-server)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error(`CORS blocked: ${origin}`));
+    },
+    credentials: true,
+};
+
 if (process.env.NODE_ENV === 'production') {
-    app.use(cors({
-        origin: ["http://localhost:5173", "https://novella-mothier-clyde.ngrok-free.dev", "http://localhost:5174", process.env.CLIENT_URL],
-        credentials: true,
-    }));
+    app.use(cors(corsOptions));
 } else {
-    // In development allow requests from any origin (useful when accessing via local network IP)
-    app.use(cors({
-        origin: true,
-        credentials: true,
-    }));
+    app.use(cors({ origin: true, credentials: true }));
 }
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
