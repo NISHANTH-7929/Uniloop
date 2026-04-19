@@ -30,6 +30,7 @@ const NewLostFoundForm = () => {
     });
     const [imageData, setImageData] = useState(""); // base64 data URL
     const [imagePreview, setImagePreview] = useState("");
+    const [imageFile, setImageFile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -53,30 +54,11 @@ const NewLostFoundForm = () => {
             return;
         }
         
-        const reader = new FileReader();
-        reader.onerror = () => {
-            setError("Failed to read the image file. Please try again.");
-            console.error("FileReader error:", reader.error);
-        };
-        reader.onabort = () => {
-            setError("Image reading was cancelled. Please try again.");
-        };
-        reader.onloadend = () => {
-            if (reader.result && reader.result.length > 0) {
-                setImageData(reader.result); // base64 data URL
-                setImagePreview(reader.result);
-                setError(""); // Clear any previous errors
-            } else {
-                setError("Failed to process the image. Please try again.");
-            }
-        };
-        
-        try {
-            reader.readAsDataURL(file);
-        } catch (err) {
-            setError("Error reading image: " + err.message);
-            console.error("FileReader exception:", err);
-        }
+        setImageFile(file);
+        const objectUrl = URL.createObjectURL(file);
+        setImageData(objectUrl);
+        setImagePreview(objectUrl);
+        setError("");
     };
 
     const handleSubmit = async (e) => {
@@ -94,9 +76,9 @@ const NewLostFoundForm = () => {
             return; 
         }
         
-        // Verify imageData looks like valid base64
-        if (!imageData.startsWith("data:image/")) {
-            setError("Invalid image data. The image may be corrupted. Please try uploading again.");
+        // Verify imageFile exists
+        if (!imageFile) {
+            setError("The image file is missing. Please try uploading again.");
             return;
         }
         
@@ -107,27 +89,27 @@ const NewLostFoundForm = () => {
 
         setLoading(true);
         try {
-            // Send only fields that matter for the request
-            const payload = {
-                type:       form.type,
-                title:      form.title.trim(),
-                description:form.description.trim(),
-                category:   form.category,
-                locationTag:form.locationTag.trim(),
-                imageUrl:   imageData, // Base64 encoded image
-                isAnonymous:form.isAnonymous,
-            };
+            // Build FormData for multipart/form-data upload
+            const formData = new FormData();
+            formData.append("type", form.type);
+            formData.append("title", form.title.trim());
+            formData.append("description", form.description.trim());
+            formData.append("category", form.category);
+            formData.append("locationTag", form.locationTag.trim());
+            formData.append("isAnonymous", form.isAnonymous);
+            
+            if (imageFile) {
+                formData.append("image", imageFile);
+            }
+            
             if (form.type === "found" && form.claimQuestion.trim()) {
-                payload.claimQuestion = form.claimQuestion.trim();
-                payload.claimAnswer = form.claimAnswer.trim();
+                formData.append("claimQuestion", form.claimQuestion.trim());
+                formData.append("claimAnswer", form.claimAnswer.trim());
             }
 
-            console.debug("Lost & Found submission payload:", {
-                ...payload,
-                imageUrl: payload.imageUrl ? `${payload.imageUrl.substring(0, 50)}... (${payload.imageUrl.length} bytes)` : "missing"
-            });
+            console.debug("Lost & Found submission with FormData");
 
-            await createLostFoundItem(payload);
+            await createLostFoundItem(formData);
             toast.success("✅ Item posted successfully!");
             navigate("/community/lostfound");
         } catch (err) {
