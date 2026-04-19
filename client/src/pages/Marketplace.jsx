@@ -115,7 +115,8 @@ const Marketplace = () => {
     const [myListingsLoading, setMyListingsLoading] = useState(false);
     const [editingListing, setEditingListing] = useState(null); // listing being edited
     const [editForm, setEditForm] = useState({});
-    const [editImages, setEditImages] = useState([]);
+    const [editImages, setEditImages] = useState([]); // array of File objects
+    const [editPreviews, setEditPreviews] = useState([]); // array of URL or object URLs
 
     /* my trades */
     const [myTrades, setMyTrades] = useState([]);
@@ -128,7 +129,8 @@ const Marketplace = () => {
     /* create listing modal */
     const [isCreatingListing, setIsCreatingListing] = useState(false);
     const [newListing, setNewListing] = useState({ title: "", description: "", price: "", category: "", listingType: "sell", condition: "New" });
-    const [newListingImages, setNewListingImages] = useState([]); // array of base64 strings
+    const [newListingImages, setNewListingImages] = useState([]); // array of File objects
+    const [newListingPreviews, setNewListingPreviews] = useState([]); // array of object URLs
 
     /* ── wishlist tab state ── */
     const [wishlistItems, setWishlistItems] = useState([]);
@@ -285,18 +287,26 @@ const Marketplace = () => {
     const handleCreateListing = async (e) => {
         e.preventDefault();
         try {
-            const payload = {
-                ...newListing,
-                price: newListing.listingType === "borrow" ? 0 : Number(newListing.price),
-                images: newListingImages,
-            };
-            const res = await createListing(payload);
+            const formData = new FormData();
+            formData.append("title", newListing.title);
+            formData.append("description", newListing.description);
+            formData.append("category", newListing.category);
+            formData.append("listingType", newListing.listingType);
+            formData.append("condition", newListing.condition);
+            formData.append("price", newListing.listingType === "borrow" ? 0 : Number(newListing.price));
+            
+            newListingImages.forEach(file => {
+                formData.append("images", file);
+            });
+
+            const res = await createListing(formData);
             toast.success("Listing created!");
             setListings([res.data, ...listings]);
             setMyListings([res.data, ...myListings]);
             setIsCreatingListing(false);
             setNewListing({ title: "", description: "", price: "", category: "", listingType: "sell", condition: "New" });
             setNewListingImages([]);
+            setNewListingPreviews([]);
         } catch (err) {
             toast.error(err.response?.data?.message || "Failed to create listing");
         }
@@ -367,8 +377,19 @@ const Marketplace = () => {
     const handleEditListing = async (e) => {
         e.preventDefault();
         try {
-            const payload = { ...editForm, images: editImages };
-            const res = await editListing(editingListing._id, payload);
+            const formData = new FormData();
+            if (editForm.title) formData.append("title", editForm.title);
+            if (editForm.description) formData.append("description", editForm.description);
+            if (editForm.condition) formData.append("condition", editForm.condition);
+            if (editForm.price !== undefined) formData.append("price", Number(editForm.price));
+            
+            editImages.forEach(file => {
+                formData.append("images", file);
+            });
+
+            // Note: If no new images are provided, the backend will just retain the old ones.
+
+            const res = await editListing(editingListing._id, formData);
             setMyListings(prev => prev.map(l => l._id === editingListing._id ? res.data : l));
             setListings(prev => prev.map(l => l._id === editingListing._id ? res.data : l));
             toast.success("Listing updated!");
@@ -380,18 +401,17 @@ const Marketplace = () => {
         const files = Array.from(e.target.files).slice(0, 3 - newListingImages.length);
         files.forEach(file => {
             if (file.size > 5 * 1024 * 1024) { toast.error("Each image must be under 5MB"); return; }
-            const reader = new FileReader();
-            reader.onloadend = () => setNewListingImages(prev => [...prev, reader.result].slice(0, 3));
-            reader.readAsDataURL(file);
+            setNewListingImages(prev => [...prev, file].slice(0, 3));
+            setNewListingPreviews(prev => [...prev, URL.createObjectURL(file)].slice(0, 3));
         });
     };
 
     const handleEditImageChange = (e) => {
         const files = Array.from(e.target.files).slice(0, 3 - editImages.length);
         files.forEach(file => {
-            const reader = new FileReader();
-            reader.onloadend = () => setEditImages(prev => [...prev, reader.result].slice(0, 3));
-            reader.readAsDataURL(file);
+            if (file.size > 5 * 1024 * 1024) { toast.error("Each image must be under 5MB"); return; }
+            setEditImages(prev => [...prev, file].slice(0, 3));
+            setEditPreviews(prev => [...prev, URL.createObjectURL(file)].slice(0, 3));
         });
     };
 
@@ -563,7 +583,7 @@ const Marketplace = () => {
                                 <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
                                     {item.status === 'available' && (
                                         <>
-                                            <button className="btn-neon" title="Edit" onClick={() => { setEditingListing(item); setEditForm({ title: item.title, description: item.description, price: item.price, condition: item.condition }); setEditImages(item.images || []); }}
+                                      <button className="btn-neon" title="Edit" onClick={() => { setEditingListing(item); setEditForm({ title: item.title, description: item.description, price: item.price, condition: item.condition }); setEditImages([]); setEditPreviews(item.images || []); }}
                                                 style={{ padding: "7px 10px", fontSize: "0.8rem" }}><Edit2 size={14} /></button>
                                             <button className="btn-neon" title="Mark as Completed" onClick={() => handleMarkSold(item._id)} style={{ padding: "7px 12px", fontSize: "0.8rem", background: "rgba(0,255,136,0.08)", borderColor: "#00ff8844" }}>
                                                 <CheckCircle size={15} /> <span style={{ marginLeft: 4 }}>Sold</span>
@@ -926,12 +946,15 @@ const Marketplace = () => {
                                     <label style={{ display: "block", color: "var(--text-muted)", fontSize: "0.83rem", marginBottom: "7px" }}>Photos (Max 3)</label>
                                     <input type="file" multiple accept="image/*" onChange={handleNewListingImageChange}
                                         style={{ ...inputStyle, padding: "8px" }} disabled={newListingImages.length >= 3} />
-                                    {newListingImages.length > 0 && (
+                                    {newListingPreviews.length > 0 && (
                                         <div style={{ display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" }}>
-                                            {newListingImages.map((img, i) => (
+                                            {newListingPreviews.map((img, i) => (
                                                 <div key={i} style={{ position: "relative", width: 60, height: 60, borderRadius: 8, overflow: "hidden" }}>
                                                     <img src={img} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                                    <button type="button" onClick={() => setNewListingImages(prev => prev.filter((_, idx) => idx !== i))}
+                                                    <button type="button" onClick={() => {
+                                                        setNewListingImages(prev => prev.filter((_, idx) => idx !== i));
+                                                        setNewListingPreviews(prev => prev.filter((_, idx) => idx !== i));
+                                                    }}
                                                         style={{ position: "absolute", top: 2, right: 2, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "0.6rem" }}>
                                                         <X size={12} />
                                                     </button>
@@ -1011,17 +1034,21 @@ const Marketplace = () => {
                                     <label style={{ display: "block", color: "var(--text-muted)", fontSize: "0.83rem", marginBottom: "7px" }}>Photos (Max 3)</label>
                                     <input type="file" multiple accept="image/*" onChange={handleEditImageChange}
                                         style={{ ...inputStyle, padding: "8px" }} disabled={editImages.length >= 3} />
-                                    {editImages.length > 0 && (
-                                        <div style={{ display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" }}>
-                                            {editImages.map((img, i) => (
+                                    {editPreviews.length > 0 && (
+                                        <div style={{ display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap", alignItems: "center" }}>
+                                            {editPreviews.map((img, i) => (
                                                 <div key={i} style={{ position: "relative", width: 60, height: 60, borderRadius: 8, overflow: "hidden" }}>
                                                     <img src={img} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                                    <button type="button" onClick={() => setEditImages(prev => prev.filter((_, idx) => idx !== i))}
+                                                    <button type="button" onClick={() => {
+                                                        setEditImages(prev => prev.filter((_, idx) => idx !== i));
+                                                        setEditPreviews(prev => prev.filter((_, idx) => idx !== i));
+                                                    }}
                                                         style={{ position: "absolute", top: 2, right: 2, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "0.6rem" }}>
                                                         <X size={12} />
                                                     </button>
                                                 </div>
                                             ))}
+                                            <p style={{ color: "var(--text-muted)", fontSize: "0.75rem", margin: 0, marginLeft: 8 }}>To keep existing photos, simply don't upload new ones.</p>
                                         </div>
                                     )}
                                 </div>

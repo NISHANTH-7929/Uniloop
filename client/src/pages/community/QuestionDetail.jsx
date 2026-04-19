@@ -10,6 +10,8 @@ const QuestionDetail = () => {
     const { user } = useAuth();
     const [post, setPost]     = useState(null);
     const [answer, setAnswer] = useState("");
+    const [answerImage, setAnswerImage] = useState(null);
+    const [answerImagePreview, setAnswerImagePreview] = useState(null);
     const [loading, setLoading] = useState(false);
 
     const load = async () => { try { const r = await getQAQuestion(id); setPost(r.data.data); } catch (_) {} };
@@ -23,8 +25,26 @@ const QuestionDetail = () => {
     const handleAnswer = async (e) => {
         e.preventDefault();
         setLoading(true);
-        try { await postAnswer(id, { body: answer }); toast.success("Answer posted!"); setAnswer(""); load(); } catch (err) { toast.error(err.response?.data?.message || "Failed"); }
+        try {
+            const formData = new FormData();
+            formData.append("body", answer);
+            if (answerImage) formData.append("image", answerImage);
+            await postAnswer(id, formData);
+            toast.success("Answer posted!");
+            setAnswer("");
+            setAnswerImage(null);
+            setAnswerImagePreview(null);
+            load();
+        } catch (err) { toast.error(err.response?.data?.message || "Failed"); }
         setLoading(false);
+    };
+
+    const handleAnswerImageChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5MB"); return; }
+        setAnswerImage(file);
+        setAnswerImagePreview(URL.createObjectURL(file));
     };
 
     const handleUpvote = async (answerId) => {
@@ -74,6 +94,18 @@ const QuestionDetail = () => {
                     <form onSubmit={handleAnswer}>
                         <textarea required value={answer} onChange={e => setAnswer(e.target.value)} placeholder="Write your answer here…" rows={5}
                             style={{ width: "100%", padding: "12px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "10px", color: "#fff", resize: "vertical", boxSizing: "border-box", marginBottom: "14px" }} />
+                        <div style={{ marginBottom: "14px" }}>
+                            <label style={{ color: "var(--text-muted)", fontSize: "0.82rem", marginBottom: "6px", display: "block" }}>Attach Photo (optional, max 5MB)</label>
+                            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAnswerImageChange}
+                                style={{ width: "100%", padding: "8px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "10px", color: "#fff" }} />
+                            {answerImagePreview && (
+                                <div style={{ marginTop: 8, position: "relative", display: "inline-block" }}>
+                                    <img src={answerImagePreview} alt="preview" style={{ width: 100, height: 70, objectFit: "cover", borderRadius: 8 }} />
+                                    <button type="button" onClick={() => { setAnswerImage(null); setAnswerImagePreview(null); }}
+                                        style={{ position: "absolute", top: 2, right: 2, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: 18, height: 18, cursor: "pointer", fontSize: "0.65rem" }}>✕</button>
+                                </div>
+                            )}
+                        </div>
                         <button id="qa-answer-btn" type="submit" disabled={loading}
                             style={{ padding: "11px 26px", background: "linear-gradient(135deg, #00d4ff, #7000ff)", border: "none", borderRadius: "10px", color: "#fff", fontWeight: "bold", cursor: loading ? "not-allowed" : "pointer" }}>
                             {loading ? "Posting…" : "Post Answer"}
