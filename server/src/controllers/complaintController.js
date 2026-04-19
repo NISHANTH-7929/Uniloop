@@ -2,6 +2,7 @@ import Complaint from "../models/Complaint.js";
 import Notification from "../models/Notification.js";
 import { stripReporter, stripReporterArray } from "../middleware/stripReporter.js";
 import { getIO } from "../utils/socketUtils.js";
+import { deleteFromCloudinary } from "../config/cloudinary.js";
 
 const handleError = (res, err) => {
     if (err.name === "CastError") return res.status(400).json({ success: false, message: "Invalid ID format" });
@@ -13,10 +14,20 @@ const handleError = (res, err) => {
 // POST /complaints
 export const createComplaint = async (req, res) => {
     try {
-        const complaint = await Complaint.create({ reporter: req.user._id, ...req.body });
+        const bodyData = { ...req.body };
+        if (req.file) {
+            bodyData.imageUrl = req.file.path;
+            bodyData.imagePublicId = req.file.filename;
+        }
+        const complaint = await Complaint.create({ reporter: req.user._id, ...bodyData });
         // Return with reporter stripped
         return res.status(201).json({ success: true, data: stripReporter(complaint) });
-    } catch (err) { return handleError(res, err); }
+    } catch (err) {
+        if (req.file && req.file.filename) {
+            deleteFromCloudinary(req.file.filename).catch(console.error);
+        }
+        return handleError(res, err);
+    }
 };
 
 // GET /complaints (public — no reporter)

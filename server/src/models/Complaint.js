@@ -14,6 +14,7 @@ const complaintSchema = new Schema({
     title:         { type: String, required: true },
     description:   { type: String, required: true },
     imageUrl:      { type: String, default: null },
+    imagePublicId: { type: String, default: null },
     status: {
         type: String,
         enum: ["submitted","under_review","resolved","dismissed"],

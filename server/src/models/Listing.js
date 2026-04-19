@@ -41,6 +41,9 @@ const listingSchema = new mongoose.Schema({
     images: [{
         type: String
     }],
+    imagePublicIds: [{
+        type: String
+    }],
     meetupLocations: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'MeetupLocation'

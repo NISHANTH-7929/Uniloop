@@ -4,15 +4,28 @@ import MeetupLocation from '../models/MeetupLocation.js';
 import Wishlist from '../models/Wishlist.js';
 import Notification from '../models/Notification.js';
 import sendEmail from '../utils/sendEmail.js';
+import { deleteFromCloudinary } from "../config/cloudinary.js";
 
 // @desc    Create a new listing
 // @route   POST /api/listings
 // @access  Private
 export const createListing = async (req, res) => {
     try {
-        const { title, description, price, category, listingType, images, meetupLocations, expiresAt } = req.body;
+        const { title, description, price, category, listingType, meetupLocations, expiresAt } = req.body;
+        
+        let images = req.body.images || [];
+        let imagePublicIds = [];
+        if (req.files && req.files.length > 0) {
+            images = req.files.map(file => file.path);
+            imagePublicIds = req.files.map(file => file.filename);
+        } else if (typeof images === 'string') {
+            images = [images];
+        }
 
         if (!title || !description || price === undefined || !category || !listingType) {
+            if (imagePublicIds.length > 0) {
+                imagePublicIds.forEach(id => deleteFromCloudinary(id).catch(console.error));
+            }
             return res.status(400).json({ message: 'Please provide all required fields' });
         }
 
@@ -24,6 +37,7 @@ export const createListing = async (req, res) => {
             category,
             listingType,
             images: images || [],
+            imagePublicIds: imagePublicIds || [],
             meetupLocations: meetupLocations || [],
             expiresAt: expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Default 30 days
         });
@@ -31,6 +45,9 @@ export const createListing = async (req, res) => {
         res.status(201).json(listing);
     } catch (error) {
         console.error(error);
+        if (req.files && req.files.length > 0) {
+            req.files.forEach(file => deleteFromCloudinary(file.filename).catch(console.error));
+        }
         res.status(500).json({ message: 'Server Error' });
     }
 };
@@ -134,6 +151,15 @@ export const updateListing = async (req, res) => {
             return res.status(400).json({ message: 'Cannot change price while a trade is in progress' });
         }
 
+        // Handle new image uploads (replaces old ones)
+        if (req.files && req.files.length > 0) {
+            if (listing.imagePublicIds && listing.imagePublicIds.length > 0) {
+                listing.imagePublicIds.forEach(id => deleteFromCloudinary(id).catch(console.error));
+            }
+            req.body.images = req.files.map(file => file.path);
+            req.body.imagePublicIds = req.files.map(file => file.filename);
+        }
+
         listing = await Listing.findByIdAndUpdate(
             req.params.id,
             req.body,
@@ -192,6 +218,10 @@ export const deleteListing = async (req, res) => {
 
         // Soft delete (cancel) if it has associated trades, or hard delete if fresh
         // For simplicity now, we'll mark as cancelled instead of dropping the document
+        // Optionally destroy images from Cloudinary upon cancellation/deletion if desired, 
+        // but since this is a soft-delete ('cancelled'), we'll keep the images so the user can look at history.
+        // If it was a hard delete: listing.imagePublicIds.forEach(id => deleteFromCloudinary(id).catch(console.error));
+        
         listing.status = 'cancelled';
         await listing.save();
 
